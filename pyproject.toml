@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "pupeyes"
+version = "0.1.0"
+description = "A Python Library for Pupillometry and Eye Movement Processing"
+authors = ["Han Zhang"]
+license = "GNU General Public License v3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+matplotlib = "^3.10.0"
+numpy = "^2.2.3"
+pandas = "^2.2.3"
+tqdm = "^4.67.1"
+intervaltree = "^3.1.0"
+opencv-python = "^4.11.0.86"
+scipy = "^1.15.2"
+seaborn = "^0.13.2"
+pillow = "^11.1.0"
+plotly = "^6.0.0"
+dash = "^2.18.2"
+dash-bootstrap-components = "^1.7.1"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
