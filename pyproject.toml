@@ -20,6 +20,8 @@ pillow = "^11.1.0"
 plotly = "^6.0.0"
 dash = "^2.18.2"
 dash-bootstrap-components = "^1.7.1"
+ipykernel = "^6.29.5"
+nbformat = "^5.10.4"
 
 
 [build-system]

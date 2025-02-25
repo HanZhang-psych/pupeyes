@@ -27,7 +27,7 @@ conda create -n pupeyes-env python=3.12
 conda activate pupeyes-env
 
 # Install the package
-pip install pupeyes
+conda install pupeyes
 ```
 
 ## Quick Start
