@@ -15,6 +15,8 @@ import warnings
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
+import os
+import dill
 from .utils import make_mask, lowpass_filter
 from .aoi import is_inside
 from .external.based_noise_blinks_detection import based_noise_blinks_detection
@@ -32,7 +34,7 @@ from .defaults import default_mpl, default_plotly
 
 class PupilProcessor:
 
-    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=True, artificial_d=5, artificial_size=5663, recording_unit='diameter'):
+    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter'):
         """
         Initialize PupilData object.
 
@@ -87,15 +89,24 @@ class PupilProcessor:
         # check if the difference between consecutive samples is equal to a fixed value
         diff = self.data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
         if len(diff) == 1:
-           if 1000/diff[0] != self.samp_freq:
+            if 1000/diff[0] != self.samp_freq:
                 raise ValueError(f'Actual sampling frequency {1000/diff[0]}Hz does not match the provided sampling frequency {self.samp_freq}Hz')
+            else:
+                print('Sampling frequency check passed.')
         else:
             raise ValueError('Sampling frequency is not consistent')
 
         # convert pupil size
         if convert_pupil_size:
+            self.recording_unit = recording_unit
+            self.artificial_d = artificial_d
+            self.artificial_size = artificial_size
             self.data[self.pupil_col] = convert_pupil(self.data[self.pupil_col], artificial_d=artificial_d, artificial_size=artificial_size, recording_unit=recording_unit)
             print(f'Pupil data converted to {recording_unit} with artificial d={artificial_d} and artificial size={artificial_size}')
+        else:
+            self.recording_unit = None
+            self.artificial_d = None
+            self.artificial_size = None
 
         print(f'PupilProcessor initialized with {len(self.data)} samples')
         print(f'Pupil column: {self.pupil_col}, Time column: {self.time_col}, X column: {self.x_col}, Y column: {self.y_col}')
@@ -275,7 +286,7 @@ class PupilProcessor:
 
         return self
 
-    def filter_position(self, suffix = '_xy', vertices=[(0,0), (0, 1080), (1920, 1080), (1920, 0), (0,0)]):
+    def filter_position(self, vertices, suffix = '_xy'):
         """
         Filter pupil data based on gaze position within a polygon.
 
@@ -284,10 +295,9 @@ class PupilProcessor:
 
         Parameters
         ----------
+        vertices : List of (x,y) coordinates defining the polygon vertices, e.g., [(0,0), (0,1080), (1920,1080), (1920,0), (0,0)]
         suffix : str, default='_xy'
             Suffix to append to the pupil column name for the filtered data
-        vertices : list of tuples, default=[(0,0), (0,1080), (1920,1080), (1920,0), (0,0)]
-            List of (x,y) coordinates defining the polygon vertices
 
         Returns
         -------
@@ -825,7 +835,7 @@ class PupilProcessor:
         # print summary
         print(f"\n {df_summary['baseline_outlier'].sum()} trials detected as baseline outliers:")
         if df_summary['baseline_outlier'].any():
-            print(f"\n {df_summary.query('baseline_outlier==True')[['subject','block','trial']]}")
+            print(f"\n {df_summary.query('baseline_outlier==True')[self.trial_identifier]}")
 
         # update summary data
         self.summary_data = df_summary
@@ -980,6 +990,9 @@ class PupilProcessor:
         pandas.DataFrame
             Summary statistics dataframe.
         """
+        # convert dtypes
+        self.summary_data = self.summary_data.convert_dtypes()
+
         if columns is None:
             columns = self.summary_data.columns
         if level is None:
@@ -987,10 +1000,10 @@ class PupilProcessor:
         else:
             if agg_methods is None:
                 # get all numeric columns
-                numeric_cols = self.summary_data.select_dtypes(include=['number','boolean']).columns
+                numeric_cols = self.summary_data[columns].select_dtypes(include=['number','boolean']).columns
                 agg_methods = {col: 'mean' for col in numeric_cols}
                 print(f"Using default aggregation methods: {agg_methods}")
-            return self.summary_data.groupby(level).agg(agg_methods)
+            return self.summary_data.groupby(level)[columns].agg(agg_methods)
 
 
     def validate_trials(self, trials_to_exclude, invert_mask=False):
@@ -1542,9 +1555,8 @@ class PupilProcessor:
                 return fig, axes
 
     def _plot_baseline_interactive(self, plot_by=None, show_outliers=True, save=None, plot_params=None, return_fig=True):
-        
         """
-        Create interactive histogram plot of baseline pupil sizes using Plotly.
+        Create interactive histogram plot of baseline pupil sizes using Plotly Express.
 
         Parameters
         ----------
@@ -1563,10 +1575,6 @@ class PupilProcessor:
         -------
         figure : plotly.graph_objects.Figure
             Interactive Plotly figure object.
-
-        Notes
-        -----
-        Requires baseline data and optionally baseline outlier information.
         """
         plot_params = plot_params or {}
 
@@ -1588,14 +1596,7 @@ class PupilProcessor:
 
         # check if outlier by is the same as plot_by
         if show_outliers and self.baseline_outlier_by is not None and self.baseline_outlier_by != plot_by: 
-            # both outlier by and plot by should be a list at this point
             warnings.warn(f"Outlier detection was performed by {self.baseline_outlier_by}. Plotting by {plot_by}. The plotted thresholds may be incorrect.")
-        
-        # Get groups
-        if plot_by is not None:
-            grouped = df_summary.groupby(plot_by, sort=False)
-        else:
-            grouped = [(None, df_summary)]
 
         # Plot settings
         plot_specific_settings = {
@@ -1604,27 +1605,17 @@ class PupilProcessor:
             'y_title': 'Count',
             'vline_color': 'red',
             'vline_style': 'dash',
-            'bins': 30,
-            'grid': False,
-            'bargap': 0,  # Remove gap between bars
-            'bargroupgap': 0  # Remove gap between bar groups
+            'bins': 30
         }
 
         # Update plot settings if provided
         plot_specific_settings.update({k:v for k,v in plot_params.items() if k in plot_specific_settings})
 
-        # Update Plotly defaults if provided
-        ply_kwargs = default_plotly.copy()
-        ply_kwargs['width'] = plot_params.get('width', 800)
-        ply_kwargs['height'] = plot_params.get('height', 500)
-        ply_kwargs['title_text'] = plot_params.get('title_text', plot_specific_settings['title'])
-        ply_kwargs['xaxis_title_text'] = plot_params.get('xaxis_title_text', plot_specific_settings['x_title'])
-        ply_kwargs['yaxis_title_text'] = plot_params.get('yaxis_title_text', plot_specific_settings['y_title'])
-        ply_kwargs['xaxis_showgrid'] = plot_params.get('xaxis_showgrid', plot_specific_settings['grid'])
-        ply_kwargs['yaxis_showgrid'] = plot_params.get('yaxis_showgrid', plot_specific_settings['grid'])
-        ply_kwargs['bargap'] = plot_specific_settings['bargap']
-        ply_kwargs['bargroupgap'] = plot_specific_settings['bargroupgap']
-        ply_kwargs.update({k:v for k,v in plot_params.items() if k in ply_kwargs})
+        # Get groups
+        if plot_by is not None:
+            grouped = df_summary.groupby(plot_by, sort=False)
+        else:
+            grouped = [(None, df_summary)]
 
         # Create figure
         fig = go.Figure()
@@ -1632,63 +1623,89 @@ class PupilProcessor:
         # Create dropdown menu options
         dropdown_options = []
         
-        # Keep track of all traces for each group
-        all_traces_in_groups = []
+        # Keep track of trace indices for each group
+        group_traces = []
+        
+        # Create a temporary matplotlib figure for seaborn to plot into
+        temp_fig, temp_ax = plt.subplots()
         
         # Add traces for each group
         for groupid, (group_name, group_data) in enumerate(grouped):
             # Format group name for display
             group_title = ' | '.join([str(x) for x in group_name]) if isinstance(group_name, tuple) else str(group_name) if group_name is not None else "All"
             
-            # Keep track of number of traces for this group
-            traces_in_group = []
+            # Keep track of traces for this group
+            current_group_traces = []
+            
+            # Clear the temporary axis
+            temp_ax.clear()
             
             if show_outliers:
-                # Add histogram trace for non-outliers
-                non_outlier_data = group_data[~group_data['baseline_outlier']]['baseline'].dropna()
-                if len(non_outlier_data) > 0:
-                    fig.add_trace(
-                        go.Histogram(
-                            x=non_outlier_data,
-                            name='Non-outliers',
-                            nbinsx=plot_specific_settings['bins'],
-                            visible=(groupid == 0),
-                            showlegend=True,
-                            opacity=0.7,
-                            marker_color='#4C72B0',  # seaborn default blue
-                            marker_line_color='black',
-                            marker_line_width=2
-                        )
-                    )
-                    traces_in_group.append(len(fig.data) - 1)
+                # Use seaborn to compute histogram
+                sns_hist = sns.histplot(
+                    data=group_data,
+                    x='baseline',
+                    hue='baseline_outlier',
+                    bins=plot_specific_settings['bins'],
+                    ax=temp_ax,
+                    legend=True
+                )
+                
+                # Get all patches and their colors
+                all_patches = sns_hist.patches
+                n_patches = len(all_patches)
+                patches_per_category = n_patches // 2  # Since we have two categories
+                
+                # Check if there are any outliers in the data
+                has_outliers = group_data['baseline_outlier'].any()
 
-                # Add histogram trace for outliers
-                outlier_data = group_data[group_data['baseline_outlier']]['baseline'].dropna()
-                if len(outlier_data) > 0:
-                    fig.add_trace(
-                        go.Histogram(
-                            x=outlier_data,
-                            name='Outliers',
-                            nbinsx=plot_specific_settings['bins'],
-                            visible=(groupid == 0),
-                            showlegend=True,
-                            opacity=0.7,
-                            marker_color='#DD8452',  # seaborn default orange
-                            marker_line_color='black',
-                            marker_line_width=2
+                if has_outliers:
+                    # Process non-outliers (first half of patches) and outliers (second half)
+                    categories = [
+                        (False, '#DD8452', all_patches[:patches_per_category], 'Outliers'),
+                        (True, '#4C72B0', all_patches[patches_per_category:], 'Non-outliers')
+                    ]
+                else:
+                    # If no outliers, use all patches with a single color
+                    categories = [
+                        (False, '#4C72B0', all_patches, 'Non-outliers')
+                    ]
+                
+                for outlier_status, color, patches, label in categories:
+                    if patches:  # Only add trace if there are bars
+                        # Extract x and y values from patches
+                        x = [p.get_x() + p.get_width()/2 for p in patches]
+                        y = [p.get_height() for p in patches]
+                        widths = [p.get_width() for p in patches]
+                        
+                        # Add trace to plotly figure
+                        fig.add_trace(
+                            go.Bar(
+                                x=x,
+                                y=y,
+                                width=widths[0],  # All widths should be the same
+                                name=label,
+                                marker=dict(line=dict(color='black', width=1.5)),
+                                marker_color=color,
+                                opacity=0.75,
+                                visible=(groupid == 0),
+                                hovertemplate="Baseline: %{x}<br>Count: %{y}<extra></extra>"
+                            )
                         )
-                    )
-                    traces_in_group.append(len(fig.data) - 1)
-
-                # Add threshold lines
+                        current_group_traces.append(len(fig.data) - 1)
+                
+                # Get thresholds
                 upper_thresh = group_data['baseline_upper'].values[0]
                 lower_thresh = group_data['baseline_lower'].values[0]
-
-                # Add upper threshold line
+                
+                # Get max y value from the histogram
+                max_y = max(p.get_height() for p in all_patches) * 1.1
+                
+                # Add threshold lines
                 fig.add_trace(
                     go.Scatter(
                         x=[upper_thresh, upper_thresh],
-                        y=[0, max(non_outlier_data)],  # Use pre-calculated max_y
+                        y=[0, max_y],
                         mode='lines',
                         name=f'Upper threshold: {upper_thresh:.2f}',
                         line=dict(
@@ -1697,17 +1714,15 @@ class PupilProcessor:
                             width=2
                         ),
                         visible=(groupid == 0),
-                        showlegend=True,
-                        hovertemplate=f"Upper threshold: {upper_thresh:.2f}"
+                        showlegend=True
                     )
                 )
-                traces_in_group.append(len(fig.data) - 1)
-
-                # Add lower threshold line
+                current_group_traces.append(len(fig.data) - 1)
+                
                 fig.add_trace(
                     go.Scatter(
                         x=[lower_thresh, lower_thresh],
-                        y=[0, max(non_outlier_data)],  # Use pre-calculated max_y
+                        y=[0, max_y],
                         mode='lines',
                         name=f'Lower threshold: {lower_thresh:.2f}',
                         line=dict(
@@ -1716,50 +1731,77 @@ class PupilProcessor:
                             width=2
                         ),
                         visible=(groupid == 0),
-                        showlegend=True,
-                        hovertemplate=f"Lower threshold: {lower_thresh:.2f}"
+                        showlegend=True
                     )
                 )
-                traces_in_group.append(len(fig.data) - 1)
-
+                current_group_traces.append(len(fig.data) - 1)
+            
             else:
-                # Add single histogram trace without outlier distinction
+                # Use seaborn to compute histogram without outlier distinction
+                sns_hist = sns.histplot(
+                    data=group_data,
+                    x='baseline',
+                    bins=plot_specific_settings['bins'],
+                    ax=temp_ax
+                )
+                
+                # Extract histogram data
+                patches = sns_hist.patches
+                x = [p.get_x() + p.get_width()/2 for p in patches]
+                y = [p.get_height() for p in patches]
+                widths = [p.get_width() for p in patches]
+                
+                # Add trace to plotly figure
                 fig.add_trace(
-                    go.Histogram(
-                        x=group_data['baseline'].dropna(),
+                    go.Bar(
+                        x=x,
+                        y=y,
+                        width=widths[0],  # All widths should be the same
                         name='All trials',
-                        nbinsx=plot_specific_settings['bins'],
+                        marker_color='#4C72B0',
+                        marker=dict(line=dict(color='black', width=1.5)),
+                        opacity=0.75,
                         visible=(groupid == 0),
                         showlegend=False,
-                        opacity=0.7,
-                        marker_color='lightblue',
-                        marker_line_color='black',
-                        marker_line_width=2
+                        hovertemplate="Baseline: %{x}<br>Count: %{y}<extra></extra>"
                     )
                 )
-                traces_in_group.append(len(fig.data) - 1)
-
+                current_group_traces.append(len(fig.data) - 1)
+            
             # Store traces for this group
-            all_traces_in_groups.append({
-                'traces': traces_in_group,
-                'title': group_title
+            group_traces.append({
+                'title': group_title,
+                'traces': current_group_traces
             })
+            
+        # Clean up temporary matplotlib figure
+        plt.close(temp_fig)
 
-        # Now create visibility settings outside the loop
-        total_traces = len(fig.data)
-        for group_info in all_traces_in_groups:
-            vis = [False] * total_traces
+        # Create dropdown menu options
+        for group_info in group_traces:
+            # Create visibility settings
+            vis = [False] * len(fig.data)
             for trace_idx in group_info['traces']:
                 vis[trace_idx] = True
             
-            # Add dropdown option
+            # Add dropdown option with proper title update
             dropdown_options.append(
                 dict(
                     args=[
                         {"visible": vis},
                         {
-                            "title": f"{plot_specific_settings['title']} - {group_info['title']}",
-                            "showlegend": True
+                            "title": {
+                                "text": f"{plot_specific_settings['title']} - {group_info['title']}",
+                                "x": 0.5,
+                                "xanchor": "center",
+                                "y": 0.95,
+                                "yanchor": "top",
+                                "font": {
+                                    "size": default_plotly['title_font_size'],
+                                    "family": default_plotly['title_font_family'],
+                                    "weight": default_plotly['title_font_weight']
+                                }
+                            }
                         }
                     ],
                     label=group_info['title'],
@@ -1767,20 +1809,41 @@ class PupilProcessor:
                 )
             )
 
-        # Update layout
-        fig.update_layout(
-            updatemenus=[{
-                'buttons': dropdown_options,
-                'direction': 'down',
-                'showactive': True,
-                'x': 1.2,
-                'y': 1.2,
-                'xanchor': 'right',
-                'yanchor': 'top'
-            }],
-            barmode='overlay',  # Overlay histograms
-            **ply_kwargs
-        )
+        # Update layout with Plotly defaults and dropdown menu
+        ply_kwargs = default_plotly.copy()
+        ply_kwargs['width'] = plot_params.get('width', 800)
+        ply_kwargs['height'] = plot_params.get('height', 500)
+        
+        # Set initial title to include the first group's name for consistency
+        initial_group_title = group_traces[0]['title'] if group_traces else "All"
+        ply_kwargs['title'] = {
+            "text": f"{plot_specific_settings['title']} - {initial_group_title}",
+            "x": 0.5,
+            "xanchor": "center",
+            "y": 0.95,
+            "yanchor": "top",
+            "font": {
+                "size": default_plotly['title_font_size'],
+                "family": default_plotly['title_font_family'],
+                "weight": default_plotly['title_font_weight']
+            }
+        }
+        
+        ply_kwargs['xaxis_title'] = plot_specific_settings['x_title']
+        ply_kwargs['yaxis_title'] = plot_specific_settings['y_title']
+        ply_kwargs['updatemenus'] = [{
+            'buttons': dropdown_options,
+            'direction': 'down',
+            'showactive': True,
+            'x': 1.2,
+            'y': 1.2,
+            'xanchor': 'right',
+            'yanchor': 'top'
+        }]
+        ply_kwargs['barmode'] = 'overlay'
+        ply_kwargs.update({k:v for k,v in plot_params.items() if k in ply_kwargs})
+        
+        fig.update_layout(**ply_kwargs)
 
         # Save if requested
         if save:
@@ -1789,7 +1852,7 @@ class PupilProcessor:
             else:
                 raise ValueError(f"Interactive plots must be saved as html file. Got {save}.")
 
-        # return figure 
+        # Return or display figure
         if return_fig:
             return fig
         else:
@@ -1857,6 +1920,10 @@ class PupilProcessor:
             cols = list(set(cols))
             grouped = [(None, df_plot[cols])]
         
+        # Get overall x range for threshold lines
+        x_min = df_plot[x].min()
+        x_max = df_plot[x].max()
+        
         # check if outlier by is the same as plot_by
         if show_outliers and self.trace_outlier_by is not None and self.trace_outlier_by != plot_by: 
             # both outlier by and plot by should be a list at this point
@@ -1922,8 +1989,11 @@ class PupilProcessor:
                 label = ', '.join([f"{k}: {v}" for k,v in zip(self.trial_identifier, trial)]) if is_outlier else None
                 
                 # downsample trialdata by selecting every 10th sample for faster plotting
-                downsample_mask = np.arange(len(trialdata)) % 10 == 0
-                downsampled = trialdata[downsample_mask]
+                if self.samp_freq > 100:
+                    downsample_mask = np.arange(len(trialdata)) % 10 == 0
+                    downsampled = trialdata[downsample_mask]
+                else:
+                    downsampled = trialdata
 
                 trace = go.Scatter(
                     x=downsampled[x],
@@ -1951,7 +2021,7 @@ class PupilProcessor:
                 
                 # Add upper threshold line
                 trace_upper = go.Scatter(
-                    x=[downsampled[x].min(), downsampled[x].max()],
+                    x=[x_min, x_max],  # Use overall x range
                     y=[upper_threshold, upper_threshold],
                     mode='lines',
                     line=dict(dash=plot_specific_settings['hline_style'],
@@ -1966,7 +2036,7 @@ class PupilProcessor:
                 
                 # Add lower threshold line
                 trace_lower = go.Scatter(
-                    x=[downsampled[x].min(), downsampled[x].max()],
+                    x=[x_min, x_max],  # Use overall x range
                     y=[lower_threshold, lower_threshold],
                     mode='lines',
                     line=dict(dash=plot_specific_settings['hline_style'],
@@ -1990,10 +2060,11 @@ class PupilProcessor:
             
             # Update the args for each dropdown option
             dropdown_options[i]['args'][0]["visible"] = vis
-            dropdown_options[i]['args'][1]["title"] = f"{plot_specific_settings['title']} - {dropdown_options[i]['label']}"
+            dropdown_options[i]['args'][1] = {}  # Empty dict to avoid title updates
         
-        # Update layout to include dropdown menu
+        # Update layout to include dropdown menu and set fixed title
         fig.update_layout(
+            title=plot_specific_settings['title'],  # Set fixed title
             updatemenus=[dict(
                 type="dropdown",
                 direction="down",
@@ -2199,12 +2270,9 @@ class PupilProcessor:
         path : str
             Path to save file.
         """
-
-        # check if dill is installed
-        try:
-            import dill
-        except ImportError:
-            raise ImportError("dill is not installed. Please install dill using pip install dill.") 
+        # check if file exists
+        if os.path.exists(path):
+            raise FileExistsError(f"File {path} already exists.")
         
         # save data
         with open(path, 'wb') as f:
@@ -2225,13 +2293,6 @@ class PupilProcessor:
         object
             Loaded object.
         """
-
-        # check if dill is installed
-        try:
-            import dill
-        except ImportError:
-            raise ImportError("dill is not installed. Please install dill using pip install dill.") 
-
         # load data
         with open(path, 'rb') as f:
             return dill.load(f) 
@@ -2248,6 +2309,145 @@ class PupilProcessor:
         import copy
         # deepcopy
         return copy.deepcopy(self)
+
+    @staticmethod
+    def combine(processors):
+        """
+        Combine multiple PupilProcessor instances into a single instance.
+        
+        This method allows combining data from multiple processors that have gone through
+        identical preprocessing pipelines. This is useful when:
+        1. Processing large datasets in chunks to manage memory
+        2. Adding new data to an existing processed dataset
+        3. Processing data from multiple participants separately
+        
+        Parameters
+        ----------
+        processors : list
+            List of PupilProcessor instances to combine
+            
+        Returns
+        -------
+        PupilProcessor
+            A new PupilProcessor instance containing combined data
+            
+        Raises
+        ------
+        ValueError
+            If processors have different preprocessing settings or incompatible data structures
+        """
+        if not processors:
+            raise ValueError("No processors provided")
+        if len(processors) == 1:
+            return processors[0].copy()
+            
+        # Use the first processor as reference
+        ref = processors[0]
+        
+        # Check compatibility of all processors
+        for i, proc in enumerate(processors[1:], 1):
+            # Check initialization parameters and data structure
+            init_attrs = [
+                'pupil_col',      # Original pupil column
+                'time_col',       # Time column
+                'x_col',          # X position column
+                'y_col',          # Y position column
+                'samp_freq',      # Sampling frequency
+                'trial_identifier', # Trial identifier columns
+                'recording_unit', # Recording unit
+                'artificial_d',   # Artificial pupil diameter
+                'artificial_size' # Artificial pupil size
+            ]
+            
+            # Check if all initialization attributes match
+            for attr in init_attrs:
+                if not hasattr(proc, attr) or getattr(proc, attr) != getattr(ref, attr):
+                    raise ValueError(f"Processor {i} has different {attr} than the reference processor")
+            
+            # Check if data columns match (both names and order)
+            if not list(proc.data.columns) == list(ref.data.columns):
+                raise ValueError(f"Processor {i} has different columns or column order than the reference processor")
+            
+            # Check preprocessing steps by comparing pupil column names and steps
+            if not proc.all_pupil_cols == ref.all_pupil_cols:
+                raise ValueError(f"Processor {i} has different pupil columns than the reference processor")
+                
+            if not proc.all_steps == ref.all_steps:
+                raise ValueError(f"Processor {i} has different preprocessing steps than the reference processor.\nReference steps: {ref.all_steps}\nProcessor {i} steps: {proc.all_steps}")
+            
+            # Check if preprocessing parameters match for each step
+            # Get all unique parameter keys
+            all_keys = set(ref.params.keys()) | set(proc.params.keys())
+            diff_params = {}
+            missing_params = set(ref.params.keys()) - set(proc.params.keys())
+            extra_params = set(proc.params.keys()) - set(ref.params.keys())
+            
+            # Compare parameters that exist in both
+            for k in ref.params.keys() & proc.params.keys():
+                ref_val = ref.params[k]
+                proc_val = proc.params[k]
+                
+                # Compare dictionaries within parameters
+                if isinstance(ref_val, dict) and isinstance(proc_val, dict):
+                    ref_dict = {key: str(val) if hasattr(val, 'shape') else val 
+                              for key, val in ref_val.items() if key != 'self'}
+                    proc_dict = {key: str(val) if hasattr(val, 'shape') else val 
+                               for key, val in proc_val.items() if key != 'self'}
+                    if ref_dict != proc_dict:
+                        diff_params[k] = (ref_dict, proc_dict)
+                else:
+                    # For non-dictionary values, convert to string if they're array-like
+                    ref_str = str(ref_val) if hasattr(ref_val, 'shape') else ref_val
+                    proc_str = str(proc_val) if hasattr(proc_val, 'shape') else proc_val
+                    if ref_str != proc_str:
+                        diff_params[k] = (ref_str, proc_str)
+            
+            if diff_params or missing_params or extra_params:
+                error_msg = f"Processor {i} has different preprocessing parameters than the reference processor.\n"
+                if diff_params:
+                    error_msg += "Different parameters:\n"
+                    for param, (ref_val, proc_val) in diff_params.items():
+                        error_msg += f"  {param}: reference={ref_val}, processor{i}={proc_val}\n"
+                if missing_params:
+                    error_msg += f"Missing parameters: {missing_params}\n"
+                if extra_params:
+                    error_msg += f"Extra parameters: {extra_params}\n"
+                raise ValueError(error_msg)
+            
+            # Check if outlier detection settings match
+            outlier_attrs = [
+                'baseline_outlier_by',  # Grouping for baseline outliers
+                'trace_outlier_by',     # Grouping for trace outliers
+                'baseline_query',       # Baseline selection query
+                'baseline_range'        # Baseline time range
+            ]
+            
+            for attr in outlier_attrs:
+                if hasattr(ref, attr):  # Only check if reference has this attribute
+                    if not hasattr(proc, attr) or getattr(proc, attr) != getattr(ref, attr):
+                        raise ValueError(f"Processor {i} has different {attr} than the reference processor")
+            
+            # Check summary data structure if it exists
+            if proc.summary_data is not None and ref.summary_data is not None:
+                if not list(proc.summary_data.columns) == list(ref.summary_data.columns):
+                    raise ValueError(f"Processor {i} summary data has different columns or column order than the reference processor")
+        
+        # Create new processor with combined data
+        combined = ref.copy()
+        
+        # Combine data from all processors
+        data_frames = [p.data for p in processors]
+        combined.data = pd.concat(data_frames, axis=0, ignore_index=True)
+        
+        # Update trials attribute to reflect combined data
+        combined.trials = combined.data[combined.trial_identifier].drop_duplicates().reset_index(drop=True)
+        
+        # Combine summary data if it exists in all processors
+        if all(p.summary_data is not None for p in processors):
+            summary_frames = [p.summary_data for p in processors]
+            combined.summary_data = pd.concat(summary_frames, axis=0, ignore_index=True)
+        
+        return combined
 
 def compute_speed(x, y):
     """
@@ -2315,9 +2515,9 @@ def convert_pupil(pupil_size, artificial_d, artificial_size, recording_unit='dia
     -----
     - The unit of artifiical_size must be the same as the unit of the actual recording (either diameter or area).
     - The unit of artificial_d is always in mm.
-    - For diameter recordings, applies linear scaling
-    - For area recordings, takes square root before scaling
-    - Raises ValueError if recording_unit is invalid
+    - For diameter recordings, the function applies linear scaling.
+    - For area recordings, the function takes square root and then scales.
+    - Raises ValueError if recording_unit is invalid.
     """
     if recording_unit == 'diameter':
         return artificial_d * pupil_size / artificial_size

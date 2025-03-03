@@ -22,7 +22,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 
 class PupilViewer:
-    def __init__(self, pupil_processor):
+    def __init__(self, pupil_processor, hue=None, columns=None):
         """
         Initialize PupilViewer with a PupilProcessor instance.
         
@@ -30,8 +30,14 @@ class PupilViewer:
         ----------
         pupil_processor : PupilProcessor
             Instance of PupilProcessor containing the pupil data
+        hue : str, optional
+            Column name to group data by for separate lines in the plot
+        columns : list of str, optional
+            List of column names to plot. Defaults to all pupil columns.
         """
         self.p = pupil_processor
+        self.hue = hue
+        self.columns = columns if columns is not None else self.p.all_pupil_cols
         self.app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
         
         # Create app layout
@@ -48,6 +54,9 @@ class PupilViewer:
             label = ' | '.join([f"{k}: {v}" for k, v in trial.items()])
             value = {k: v for k, v in trial.items()}
             trial_options.append({'label': label, 'value': str(value)})
+            
+        # Get column options
+        column_options = [{'label': col, 'value': col} for col in self.p.all_pupil_cols]
             
         return dbc.Container([
             html.H1("Pupil Preprocessing Explorer", className="text-center my-4"),
@@ -66,6 +75,20 @@ class PupilViewer:
                 ], width=12)
             ]),
             
+            dbc.Row([
+                # Column Selection
+                dbc.Col([
+                    html.Label("Select Columns to Plot:", className="mb-2"),
+                    dcc.Dropdown(
+                        id='column-selector',
+                        options=column_options,
+                        value=self.columns,
+                        multi=True,
+                        className="mb-4"
+                    )
+                ], width=12)
+            ]),
+            
             # Plot
             dbc.Row([
                 dbc.Col([
@@ -78,23 +101,27 @@ class PupilViewer:
         """Set up callbacks for plot updates."""
         @self.app.callback(
             Output('pupil-plot', 'figure'),
-            [Input('trial-selector', 'value')]
+            [Input('trial-selector', 'value'),
+             Input('column-selector', 'value')]
         )
-        def update_plot(trial_str):
+        def update_plot(trial_str, selected_columns):
             # Convert string trial back to dict
             import ast
             trial = ast.literal_eval(trial_str)
             
+            # Use selected columns or default to all columns
+            plot_columns = selected_columns if selected_columns else self.columns
+            
             # Plot parameters
             plot_params = {
-                'layout': (len(self.p.all_pupil_cols), 1),  # One row per preprocessing step
-                'subplot_titles': self.p.all_pupil_cols,
+                'layout': (len(plot_columns), 1),  # One row per preprocessing step
+                'subplot_titles': plot_columns,
                 'x_title': 'Time (ms)',
                 'y_title': 'Pupil Size',
                 'showlegend': True,
                 'grid': False,
                 'width': 1200,
-                'height': 200 * len(self.p.all_pupil_cols),
+                'height': 200 * len(plot_columns),
                 'title_text': f"Pupil Preprocessing Steps - {' | '.join([f'{k}: {v}' for k, v in trial.items()])}"
             }
             
@@ -102,13 +129,13 @@ class PupilViewer:
             fig = self.p._plot_trial_interactive(
                 trial=trial,
                 x=self.p.time_col,
-                y=self.p.all_pupil_cols,
-                hue='routine',
+                y=plot_columns,
+                hue=self.hue,
                 plot_params=plot_params
             )
             
             return fig
             
-    def run_server(self, **kwargs):
+    def run_server(self, port=8051, **kwargs):
         """Run the Dash server."""
-        self.app.run_server(**kwargs) 
+        self.app.run_server(port=port,**kwargs) 

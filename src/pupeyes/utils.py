@@ -124,7 +124,6 @@ def make_mask(data, trials_to_mask, invert=False):
         # try to convert to dataframe
         try:
             dtype = type(trials_to_mask)
-            print(f'Converting {dtype} mask to DataFrame...')
             trials_to_mask = pd.DataFrame([trials_to_mask.values()], columns=trials_to_mask.keys())
         except:
             raise ValueError("Cannot convert trials_to_mask to DataFrame.")
