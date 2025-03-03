@@ -2092,11 +2092,11 @@ class PupilProcessor:
             display(fig)
 
 
-    def plot_evoked(self, data=None, time_col=None, pupil_col=None, condition=None, error='ci', save=None, plot_params=None, **kwargs):
+    def plot_evoked(self, data=None, time_col=None, pupil_col=None, condition=None, agg_by=None, error='ci', save=None, plot_params=None, **kwargs):
         """
         Plot evoked pupil response.
 
-        Creates plot of average pupil response across trials, optionally split by condition.
+        Creates plot of average pupil response across trials, optionally split by condition and aggregated by specified groups.
 
         Parameters
         ----------
@@ -2108,6 +2108,9 @@ class PupilProcessor:
             Column name for pupil values.
         condition : str or list, optional
             Column(s) to split data by.
+        agg_by : str or list, optional
+            Column(s) to aggregate data by before computing mean trace and confidence bands.
+            For example, to compute subject-level means, use 'subject_id'.
         error : {'ci', 'sem', 'std', None}, default='ci'
             Type of error to plot:
             - 'ci': bootstrap confidence interval
@@ -2150,21 +2153,48 @@ class PupilProcessor:
             # get unique values for each condition
             condition_values = {cond: data[cond].unique() for cond in condition}
 
+        # handle agg_by
+        if agg_by is not None:
+            if isinstance(agg_by, str):
+                agg_by = [agg_by]
+
+        # get minimum length across all trials
+        min_len = data.groupby(self.trial_identifier, sort=False)[pupil_col].count().min()
+        print(f'Data will be padded to minimum length: {min_len} samples')
+
         # if no condition, process all data together
         if condition is None:
-            grouped = data.groupby(self.trial_identifier, sort=False)
-            ngroup = grouped.ngroups
-            min_len = grouped[pupil_col].count().min()
-            print(f'{ngroup} trials. Minimum number of samples: {min_len}. Data will be padded to size: {ngroup} x {min_len}')
-
-            # initialize empty array
-            test_array = np.empty((ngroup, min_len))
-
-            # iterate over groups
-            for i, (group, groupdata) in enumerate(grouped):
-                vals = np.asarray(groupdata[pupil_col].to_list())
-                vals = vals[:min_len]
-                test_array[i,:] = vals
+            if agg_by is not None:
+                # First compute mean trace for each aggregation group
+                agg_traces = []
+                for group, group_data in data.groupby(agg_by, sort=False):
+                    # Get all trials for this group and compute mean
+                    trials = group_data.groupby(self.trial_identifier, sort=False)
+                    group_array = np.empty((trials.ngroups, min_len))
+                    
+                    for i, (_, trial_data) in enumerate(trials):
+                        vals = np.asarray(trial_data[pupil_col].to_list())
+                        vals = vals[:min_len]
+                        group_array[i,:] = vals
+                    
+                    # Store mean trace for this group
+                    agg_traces.append(np.nanmean(group_array, axis=0))
+                
+                # Convert to array for plotting
+                test_array = np.array(agg_traces)
+                n_groups = len(agg_traces)
+                print(f'Computing average from {n_groups} {agg_by} means')
+            else:
+                # Process all trials without aggregation
+                grouped = data.groupby(self.trial_identifier, sort=False)
+                test_array = np.empty((grouped.ngroups, min_len))
+                
+                for i, (_, trial_data) in enumerate(grouped):
+                    vals = np.asarray(trial_data[pupil_col].to_list())
+                    vals = vals[:min_len]
+                    test_array[i,:] = vals
+                
+                print(f'Computing average from {grouped.ngroups} trials')
 
             arrays_by_condition = {'all': test_array}
             
@@ -2182,23 +2212,39 @@ class PupilProcessor:
                 
                 # get data for this combination
                 subset = data[mask]
-                grouped = subset.groupby(self.trial_identifier, sort=False)
-                ngroup = grouped.ngroups
-                if ngroup == 0:
-                    continue
-                    
-                min_len = grouped[pupil_col].count().min()
-                print(f'Condition {dict(zip(condition, comb))}: {ngroup} trials. Minimum samples: {min_len}')
                 
-                # initialize empty array
-                test_array = np.empty((ngroup, min_len))
-                
-                # iterate over groups
-                for i, (group, groupdata) in enumerate(grouped):
-                    vals = np.asarray(groupdata[pupil_col].to_list())
-                    vals = vals[:min_len]
-                    test_array[i,:] = vals
+                if agg_by is not None:
+                    # First compute mean trace for each aggregation group
+                    agg_traces = []
+                    for group, group_data in subset.groupby(agg_by, sort=False):
+                        # Get all trials for this group and compute mean
+                        trials = group_data.groupby(self.trial_identifier, sort=False)
+                        group_array = np.empty((trials.ngroups, min_len))
+                        
+                        for i, (_, trial_data) in enumerate(trials):
+                            vals = np.asarray(trial_data[pupil_col].to_list())
+                            vals = vals[:min_len]
+                            group_array[i,:] = vals
+                        
+                        # Store mean trace for this group
+                        agg_traces.append(np.nanmean(group_array, axis=0))
                     
+                    # Convert to array for plotting
+                    test_array = np.array(agg_traces)
+                    n_groups = len(agg_traces)
+                    print(f'Condition {dict(zip(condition, comb))}: Computing average from {n_groups} {agg_by} means')
+                else:
+                    # Process all trials without aggregation
+                    grouped = subset.groupby(self.trial_identifier, sort=False)
+                    test_array = np.empty((grouped.ngroups, min_len))
+                    
+                    for i, (_, trial_data) in enumerate(grouped):
+                        vals = np.asarray(trial_data[pupil_col].to_list())
+                        vals = vals[:min_len]
+                        test_array[i,:] = vals
+                    
+                    print(f'Condition {dict(zip(condition, comb))}: Computing average from {grouped.ngroups} trials')
+                
                 # store array with condition name
                 cond_name = '_'.join([f'{c}_{v}' for c,v in zip(condition, comb)])
                 arrays_by_condition[cond_name] = test_array
@@ -2223,7 +2269,6 @@ class PupilProcessor:
             fig, ax = plt.subplots()
             
             for i, (cond_name, test_array) in enumerate(arrays_by_condition.items()):
-
                 # get time array 
                 t = np.arange(test_array.shape[1]) / samp_freq
                 
