@@ -14,6 +14,7 @@ from PIL import Image
 from matplotlib.collections import LineCollection
 import warnings
 from .utils import gaussian_2d, mat2gray
+import pandas as pd
 
 def draw_heatmap(x, y, screen_dims, durations=None, fc=6, colormap='viridis', 
                  alpha=0.7, background_img=None, return_data=False):
@@ -190,9 +191,9 @@ def draw_scanpath(x, y, screen_dims, durations=None, dot_size_scale=3.0, line_wi
     
     return fig, ax
 
-def draw_aois(aois, screen_dims, background_img=None, alpha=0.3, colors=None, save=None):
+def draw_aois(aois, screen_dims, x=None, y=None, background_img=None, alpha=0, colors=None, save=None):
     """
-    Draw AOIs on a plot, optionally with a background stimulus image.
+    Draw AOIs on a plot, optionally with fixation points and a background stimulus image.
     
     Parameters
     ----------
@@ -201,6 +202,10 @@ def draw_aois(aois, screen_dims, background_img=None, alpha=0.3, colors=None, sa
         For example, {'AOI1': [(100, 100), (200, 100), (200, 200), (100, 200)]}
     screen_dims : tuple
         Screen dimensions in pixels (width, height)
+    x : array-like, optional
+        X-coordinates of fixation points to plot
+    y : array-like, optional
+        Y-coordinates of fixation points to plot
     background_img : PIL.Image or numpy.ndarray, optional
         Background image to overlay AOIs on. If a string, it is assumed to be a path to an image file.
         If a numpy array, it is assumed to be an image array.
@@ -248,11 +253,36 @@ def draw_aois(aois, screen_dims, background_img=None, alpha=0.3, colors=None, sa
         color = colors.get(aoi_name, 'blue')
         
         # Draw filled polygon with transparency
-        ax.fill(vertices[:, 0], vertices[:, 1], alpha=alpha, color=color, label=aoi_name)
+        ax.fill(vertices[:, 0], vertices[:, 1], alpha=alpha, color=color)
         # Draw outline
         ax.plot(np.append(vertices[:, 0], vertices[0, 0]),
                np.append(vertices[:, 1], vertices[0, 1]),
-               color=color, linewidth=2)
+               color=color, linewidth=2, label=aoi_name)
+    
+    # Plot fixation points if provided
+    if x is not None and y is not None:
+        from .aoi import get_fixation_aoi
+        # Convert to numpy arrays
+        x = np.asarray(x)
+        y = np.asarray(y)
+        
+        # Get AOI for each fixation point
+        point_aois = get_fixation_aoi(x, y, aois)
+        
+        # Plot points with different colors based on AOI membership
+        for aoi_name in aois.keys():
+            mask = np.array([p == aoi_name if p is not None else False for p in point_aois])
+            if np.any(mask):
+                ax.scatter(x[mask], y[mask], 
+                         color=colors[aoi_name],
+                         alpha=1)
+        
+        # Plot points not in any AOI
+        mask = pd.isna(point_aois) | (point_aois == None)
+        if np.any(mask):
+            ax.scatter(x[mask], y[mask], 
+                     color='gray',
+                     alpha=1)
     
     # Set axis limits and labels
     ax.set_xlim(0, screen_dims[0])
@@ -265,6 +295,6 @@ def draw_aois(aois, screen_dims, background_img=None, alpha=0.3, colors=None, sa
     plt.tight_layout()
     
     if save is not None:
-        plt.savefig(save)
+        plt.savefig(save, bbox_inches='tight')
     
     return fig, ax 
