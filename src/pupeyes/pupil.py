@@ -2199,16 +2199,17 @@ class PupilProcessor:
             arrays_by_condition = {'all': test_array}
             
         else:
-            # create all combinations of condition values
-            import itertools
-            condition_combinations = list(itertools.product(*[condition_values[cond] for cond in condition]))
+            # Get actual combinations from data
             arrays_by_condition = {}
             
-            for comb in condition_combinations:
+            # Get unique combinations of conditions that exist in the data
+            condition_combinations = data[condition].drop_duplicates()
+            
+            for _, comb in condition_combinations.iterrows():
                 # create mask for this combination
                 mask = pd.Series(True, index=data.index)
-                for cond, val in zip(condition, comb):
-                    mask &= (data[cond] == val)
+                for cond in condition:
+                    mask &= (data[cond] == comb[cond])
                 
                 # get data for this combination
                 subset = data[mask]
@@ -2232,7 +2233,7 @@ class PupilProcessor:
                     # Convert to array for plotting
                     test_array = np.array(agg_traces)
                     n_groups = len(agg_traces)
-                    print(f'Condition {dict(zip(condition, comb))}: Computing average from {n_groups} {agg_by} means')
+                    print(f'Condition {comb.to_dict()}: Computing average from {n_groups} {agg_by} means')
                 else:
                     # Process all trials without aggregation
                     grouped = subset.groupby(self.trial_identifier, sort=False)
@@ -2243,16 +2244,16 @@ class PupilProcessor:
                         vals = vals[:min_len]
                         test_array[i,:] = vals
                     
-                    print(f'Condition {dict(zip(condition, comb))}: Computing average from {grouped.ngroups} trials')
+                    print(f'Condition {comb.to_dict()}: Computing average from {grouped.ngroups} trials')
                 
                 # store array with condition name
-                cond_name = '_'.join([f'{c}_{v}' for c,v in zip(condition, comb)])
+                cond_name = '_'.join([f'{c}_{v}' for c,v in comb.items()])
                 arrays_by_condition[cond_name] = test_array
 
         # plot settings
         plot_specific_settings = {
         'title': 'Evoked Pupil Size',
-        'x_title': 'Time since stimulus onset(s)',
+        'x_title': 'Time since stimulus onset (s)',
         'y_title': 'Pupil Size',
         'vline_color': 'red',
         'vline_linestyle': '--',

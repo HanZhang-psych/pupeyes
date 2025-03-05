@@ -41,7 +41,7 @@ class FixationViewer:
             Column name mapping for required fields:
             {
                 'trial_id': str or list,  # Trial identifier column(s)
-                'timestamp': str,         # Timestamp column
+                'timestamp': str,         # Timestamp column (optional)
                 'x': str,                # X coordinate
                 'y': str,                # Y coordinate
                 'duration': str,         # Fixation duration (optional)
@@ -64,10 +64,10 @@ class FixationViewer:
         # Default column mapping
         self._default_col_mapping = {
             'trial_id': 'trial_id',  # Can be overridden with a list of columns
-            'timestamp': 'timestamp',
+            'timestamp': None,       # Optional timestamp column
             'x': 'x',
             'y': 'y',
-            'duration': None,  # Optional duration column
+            'duration': None,        # Optional duration column
             'stimuli': 'stimuli'
         }
         
@@ -194,26 +194,31 @@ class FixationViewer:
         if self.data is None:
             return
             
-            # Check for missing values in required columns
-        required_cols = [self.col_mapping[col] for col in ['x', 'y', 'timestamp']]
+        # Check for missing values in required columns
+        required_cols = [self.col_mapping[col] for col in ['x', 'y']]
         if isinstance(self.col_mapping['trial_id'], (list, tuple)):
             required_cols.extend(self.col_mapping['trial_id'])
         else:
             required_cols.append(self.col_mapping['trial_id'])
                 
-        # Only check duration if it's specified
+        # Only check optional columns if they're specified
         if self.col_mapping['duration'] is not None:
             required_cols.append(self.col_mapping['duration'])
         else:
             print('No duration column specified. Fixation duration will not be displayed.')
+
+        if self.col_mapping['timestamp'] is not None:
+            required_cols.append(self.col_mapping['timestamp'])
+        else:
+            print('No timestamp column specified.')
                 
-            missing_mask = self.data[required_cols].isna().any(axis=1)
-            trials_with_missing = self.data[missing_mask]
+        missing_mask = self.data[required_cols].isna().any(axis=1)
+        trials_with_missing = self.data[missing_mask]
             
-            if len(trials_with_missing) > 0:
-                warnings.warn(f"Found {len(trials_with_missing)} rows with missing values")
-                print("Trials with missing values:")
-                print(trials_with_missing)
+        if len(trials_with_missing) > 0:
+            warnings.warn(f"Found {len(trials_with_missing)} rows with missing values")
+            print("Trials with missing values:")
+            print(trials_with_missing)
         
     def _get_unique_trials(self):
         """Get all unique trial identifiers from the data."""

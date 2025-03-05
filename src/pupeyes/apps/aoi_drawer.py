@@ -171,6 +171,29 @@ class AOIDrawer:
                                     ], className="d-flex align-items-center")
                                 ], width=6)
                             ], className="g-1"),
+
+                            # Line Color Control
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Div([
+                                        html.Label("Line Color:", className="me-2 small"),
+                                        dcc.Dropdown(
+                                            id='line-color-picker',
+                                            options=[
+                                                {'label': 'Black', 'value': 'black'},
+                                                {'label': 'Red', 'value': 'red'},
+                                                {'label': 'Blue', 'value': 'blue'},
+                                                {'label': 'Green', 'value': 'green'},
+                                                {'label': 'Yellow', 'value': 'yellow'},
+                                                {'label': 'White', 'value': 'white'}
+                                            ],
+                                            value='black',
+                                            clearable=False,
+                                            style={'width': '150px'}
+                                        )
+                                    ], className="d-flex align-items-center mb-2")
+                                ])
+                            ]),
                             
                             # Current AOIs Table
                             html.Div([
@@ -255,11 +278,12 @@ class AOIDrawer:
             [Input('drawing-area', 'relayoutData'),
              Input('modal-save', 'n_clicks'),
              Input('modal-cancel', 'n_clicks'),
-             Input('bg-opacity-slider', 'value')],
+             Input('bg-opacity-slider', 'value'),
+             Input('line-color-picker', 'value')],
             [State('drawing-area', 'figure'),
              State('aoi-name-input', 'value')]
         )
-        def update_drawing_area(relayout_data, save_clicks, cancel_clicks, opacity, figure, aoi_name):
+        def update_drawing_area(relayout_data, save_clicks, cancel_clicks, opacity, line_color, figure, aoi_name):
             ctx = callback_context
             if not ctx.triggered:
                 return self._create_base_figure(), self._create_aoi_list(), False, '', ''
@@ -269,6 +293,20 @@ class AOIDrawer:
             # Initialize figure if None
             if figure is None:
                 figure = self._create_base_figure()
+            
+            # Handle line color change
+            if trigger_id == 'line-color-picker':
+                if 'layout' in figure:
+                    # Update newshape defaults
+                    if 'newshape' in figure['layout']:
+                        figure['layout']['newshape']['line']['color'] = line_color
+                    # Update existing shapes
+                    if 'shapes' in figure['layout'] and figure['layout']['shapes']:
+                        for shape in figure['layout']['shapes']:
+                            if 'line' not in shape:
+                                shape['line'] = {}
+                            shape['line']['color'] = line_color
+                return figure, self._create_aoi_list(), False, '', ''
             
             # Handle opacity change
             if trigger_id == 'bg-opacity-slider':
@@ -468,7 +506,25 @@ class AOIDrawer:
                         scaleratio=1,
                         constrain="domain"
                     ),
-                    dragmode='drawclosedpath'  # Default to closed path drawing
+                    dragmode='drawclosedpath',  # Default to closed path drawing
+                    # Configure default shape properties
+                    newshape=dict(
+                        line=dict(
+                            width=1,  # Thinner line width
+                            color='black'  # Default color
+                        ),
+                        fillcolor='rgba(0,0,0,0)',  # Transparent fill
+                        opacity=1
+                    ),
+                    # Apply same style to existing shapes
+                    shapedefaults=dict(
+                        line=dict(
+                            width=1,  # Thinner line width
+                            color='black'  # Default color
+                        ),
+                        fillcolor='rgba(0,0,0,0)',  # Transparent fill
+                        opacity=1
+                    )
                 )
         
         return fig
@@ -490,7 +546,15 @@ class AOIDrawer:
         if num_vertices == 4:
             return "Rectangle"
         elif num_vertices == 32:
-            return "Circle"
+            # Check if it's a circle or oval
+            x_coords = [x for x, _ in vertices]
+            y_coords = [y for _, y in vertices]
+            width = max(x_coords) - min(x_coords)
+            height = max(y_coords) - min(y_coords)
+            # If width and height are within 1% of each other, it's a circle
+            if abs(width - height) / max(width, height) < 0.01:
+                return "Circle"
+            return "Oval"
         else:
             return "Free Form"
         
@@ -514,18 +578,20 @@ class AOIDrawer:
             return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
             
         elif shape_type == 'circle':
-            # Convert circle to polygon approximation
+            # Convert circle/oval to polygon approximation
             x0, y0 = shape['x0'], shape['y0']
-            radius = abs(shape['x1'] - x0) / 2
-            center_x = (shape['x0'] + shape['x1']) / 2
-            center_y = (shape['y0'] + shape['y1']) / 2
+            x1, y1 = shape['x1'], shape['y1']
+            center_x = (x0 + x1) / 2
+            center_y = (y0 + y1) / 2
+            radius_x = abs(x1 - x0) / 2
+            radius_y = abs(y1 - y0) / 2
             
-            # Create polygon approximation of circle
-            num_points = 99
+            # Create polygon approximation of oval
+            num_points = 32  # Reduced from 99 to match the shape type check
             angles = np.linspace(0, 2*np.pi, num_points)
             vertices = [
-                (center_x + radius * np.cos(angle),
-                 center_y + radius * np.sin(angle))
+                (center_x + radius_x * np.cos(angle),
+                 center_y + radius_y * np.sin(angle))
                 for angle in angles
             ]
             return vertices
