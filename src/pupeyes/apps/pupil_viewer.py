@@ -22,6 +22,38 @@ from plotly.subplots import make_subplots
 import numpy as np
 
 class PupilViewer:
+    """
+    An interactive web-based visualization tool for pupil preprocessing data.
+    
+    This class provides a Dash-based interface for visualizing pupil data processing steps,
+    allowing users to explore how different preprocessing operations affect the pupil signal.
+    The interface supports trial selection, column selection for comparison, and interactive
+    plotting with subplots for each processing step.
+
+    Parameters
+    ----------
+    pupil_processor : PupilProcessor
+        Instance of PupilProcessor containing the pupil data and processing history.
+        This object should contain both raw and processed pupil data.
+    hue : str, optional
+        Column name to group data by for separate lines in the plot.
+        Useful for visualizing different components of a single trial.
+    columns : list of str, optional
+        List of column names to plot. If not provided, all pupil columns
+        from the PupilProcessor will be shown.
+
+    Attributes
+    ----------
+    p : PupilProcessor
+        The PupilProcessor instance containing the data
+    hue : str or None
+        Column name used for plotting different components of a single trial
+    columns : list
+        List of column names being plotted
+    app : dash.Dash
+        The Dash application instance
+    """
+
     def __init__(self, pupil_processor, hue=None, columns=None):
         """
         Initialize PupilViewer with a PupilProcessor instance.
@@ -137,5 +169,23 @@ class PupilViewer:
             return fig
             
     def run_server(self, port=8051, **kwargs):
-        """Run the Dash server."""
-        self.app.run_server(port=port,**kwargs) 
+        """
+        Run the Dash server for the pupil data viewer.
+        
+        Parameters
+        ----------
+        port : int, default=8051
+            Port number to run the server on.
+            Make sure the port is available and not blocked by firewall.
+        **kwargs : dict
+            Additional keyword arguments passed to dash.run_server().
+            See Dash documentation for available options.
+
+        Notes
+        -----
+        - The application will run until interrupted (Ctrl+C)
+        - Access the interface at http://localhost:<port>
+        - Each preprocessing step is shown in a separate subplot
+        - Interactive controls allow exploration of different trials and columns
+        """
+        self.app.run_server(port=port, **kwargs) 

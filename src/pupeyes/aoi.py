@@ -34,7 +34,8 @@ def get_fixation_aoi(x, y, aois):
     aois : dict or None
         Dictionary mapping AOI names to lists of vertex coordinates.
         Each vertex list should define a polygon as [(x1,y1), (x2,y2), ...].
-    
+        The last vertex should be the same as the first vertex to close the polygon.
+
     Returns
     -------
     str or list
@@ -52,8 +53,8 @@ def get_fixation_aoi(x, y, aois):
     --------
     >>> # Single point
     >>> aois = {
-    ...     'face': [(0,0), (100,0), (100,100), (0,100)],
-    ...     'text': [(150,0), (250,0), (250,50), (150,50)]
+    ...     'face': [(0,0), (100,0), (100,100), (0,100), (0,0)],
+    ...     'text': [(150,0), (250,0), (250,50), (150,50), (150,0)]
     ... }
     >>> get_fixation_aoi(50, 50, aois)
     'face'
@@ -79,8 +80,13 @@ def get_fixation_aoi(x, y, aois):
     
     # Check each AOI using parallel processing
     for aoi_name, vertices in aois.items():
-        # Add first vertex to end to close the polygon
-        vertices_array = np.array(vertices + [vertices[0]])
+        # Check if the last vertex is the same as the first vertex
+        if vertices[-1] != vertices[0]:
+            # Add first vertex to end to close the polygon
+            vertices_array = np.array(vertices + [vertices[0]])
+            print(f"Closing polygon for {aoi_name}")
+        else:
+            vertices_array = np.array(vertices)
         # Use parallel processing to check all points against current AOI
         inside_mask = is_inside(points, vertices_array)
         # Update results for points inside this AOI

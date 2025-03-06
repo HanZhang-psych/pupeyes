@@ -21,8 +21,6 @@ __maintainer__ = "Han Zhang"
 __email__ = "hanzh@umich.edu"
 __status__ = "Adapted"
 
-
-
 import copy
 import os.path
 import numpy
@@ -30,23 +28,26 @@ from tqdm import tqdm
 import re
 
 def replace_missing(value, missing=0.0):
-	
-	"""Returns missing code if passed value is missing, or the passed value
-	if it is not missing; a missing value in the EDF contains only a
-	period, no numbers; NOTE: this function is for gaze position values
-	only, NOT for pupil size, as missing pupil size data is coded '0.0'
-	
-	arguments
-	value		-	either an X or a Y gaze position value (NOT pupil
-					size! This is coded '0.0')
-	
-	keyword arguments
-	missing		-	the missing code to replace missing data with
-					(default = 0.0)
-	
-	returns
-	value		-	either a missing code, or a float value of the
-					gaze position
+	"""
+	Replace missing values in gaze position data.
+
+	Parameters
+	----------
+	value : str
+		Either an X or a Y gaze position value (NOT pupil size, which is coded '0.0')
+	missing : float, optional
+		The missing code to replace missing data with, by default 0.0
+
+	Returns
+	-------
+	float
+		Either the missing code, or the float value of the gaze position
+
+	Notes
+	-----
+	A missing value in the EDF contains only a period, no numbers.
+	This function is for gaze position values only, NOT for pupil size,
+	as missing pupil size data is coded '0.0'.
 	"""
 	
 	if value.replace(' ','') == '.':
@@ -55,38 +56,46 @@ def replace_missing(value, missing=0.0):
 		return float(value)
 
 def read_edf(filename, start, stop=None, missing=0.0, debug=False):
+	"""
+	Read EyeLink Data Format (EDF) file and extract trial data.
+
+	Adapted from: https://github.com/esdalmaijer/PyGazeAnalyser/blob/master/pygazeanalyser/edfreader.py
+	Original Author: Edwin Dalmaijer
 	
-	"""Returns a list with dicts for every trial. A trial dict contains the
-	following keys:
-		x		-	numpy array of x positions
-		y		-	numpy array of y positions
-		size		-	numpy array of pupil size
-		time		-	numpy array of timestamps, t=0 at trialstart
-		trackertime	-	numpy array of timestamps, according to EDF
-		events	-	dict with the following keys:
-						Sfix	-	list of lists, each containing [starttime]
-						Ssac	-	list of lists, each containing [starttime]
-						Sblk	-	list of lists, each containing [starttime]
-						Efix	-	list of lists, each containing [starttime, endtime, duration, endx, endy]
-						Esac	-	list of lists, each containing [starttime, endtime, duration, startx, starty, endx, endy]
-						Eblk	-	list of lists, each containing [starttime, endtime, duration]
-						msg	-	list of lists, each containing [time, message]
-						NOTE: timing is in EDF time!
 	
-	arguments
-	filename		-	path to the file that has to be read
-	start		-	trial start string
-	
-	keyword arguments
-	stop			-	trial ending string (default = None)
-	missing		-	value to be used for missing data (default = 0.0)
-	debug		-	Boolean indicating if DEBUG mode should be on or off;
-				if DEBUG mode is on, information on what the script
-				currently is doing will be printed to the console
-				(default = False)
-	
-	returns
-	data			-	a list with a dict for every trial (see above)
+	Parameters
+	----------
+	filename : str
+		Path to the file that has to be read
+	start : str
+		Trial start string to identify beginning of trials
+	stop : str, optional
+		Trial ending string, by default None
+	missing : float, optional
+		Value to be used for missing data, by default 0.0
+	debug : bool, optional
+		If True, prints information about current processing steps, by default False
+
+	Returns
+	-------
+	tuple
+		Contains two elements:
+		- data : list
+			List of dictionaries, one per trial, each containing:
+			- x : numpy.ndarray
+				Array of x positions
+			- y : numpy.ndarray
+				Array of y positions
+			- size : numpy.ndarray
+				Array of pupil sizes
+			- time : numpy.ndarray
+				Array of timestamps, t=0 at trial start
+			- trackertime : numpy.ndarray
+				Array of timestamps according to EDF
+			- events : dict
+				Dictionary containing event data
+		- metadata : dict
+			Dictionary containing calibration and tracking information
 	"""
 
 	# # # # #

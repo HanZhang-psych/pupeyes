@@ -51,8 +51,8 @@ def test_is_inside(sample_data):
 def test_get_fixation_aoi():
     # Define test AOIs
     aois = {
-        'square': [(0, 0), (0, 1), (1, 1), (1, 0)],
-        'triangle': [(2, 0), (2, 2), (4, 0)]
+        'square': [(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)],
+        'triangle': [(2, 0), (2, 2), (4, 0), (2, 0)]
     }
     
     # Test single point inside square
@@ -78,8 +78,8 @@ def test_get_fixation_aoi():
 def test_get_fixation_aoi2():
     # Define test AOIs
     aois = {
-        'face': [(0,0), (100,0), (100,100), (0,100)],
-        'text': [(150,0), (250,0), (250,50), (150,50)]
+        'face': [(0,0), (100,0), (100,100), (0,100), (0,0)],
+        'text': [(150,0), (250,0), (250,50), (150,50), (150,0)]
     }
     
     # Test single point inside square
@@ -104,8 +104,8 @@ def test_get_fixation_aoi2():
 def test_compute_aoi_statistics():
     # Define test AOIs
     aois = {
-        'square': [(0, 0), (0, 1), (1, 1), (1, 0)],
-        'triangle': [(2, 0), (2, 2), (4, 0)]
+        'square': [(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)],
+        'triangle': [(2, 0), (2, 2), (4, 0), (2, 0)]
     }
     
     # Test points and durations
@@ -137,8 +137,8 @@ def test_compute_aoi_statistics():
 def test_compute_aoi_statistics2():
     # Define test AOIs
     aois = {
-        'face': [(0,0), (100,0), (100,100), (0,100)],
-        'text': [(150,0), (250,0), (250,50), (150,50)]
+        'face': [(0,0), (100,0), (100,100), (0,100), (0,0)],
+        'text': [(150,0), (250,0), (250,50), (150,50), (150,0)]
     }
     
     # Test points and durations

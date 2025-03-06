@@ -18,7 +18,35 @@ from PIL import Image
 import dash
 
 class AOIDrawer:
-    """An interactive web-based tool for drawing Areas of Interest (AOIs)."""
+    """
+    An interactive web-based tool for drawing Areas of Interest (AOIs).
+
+    This class provides a Dash-based web interface for drawing and managing Areas of Interest
+    (AOIs) on stimulus images. It supports multiple drawing tools (freeform, rectangle, circle),
+    editing capabilities, and export functionality.
+
+    Parameters
+    ----------
+    screen_dims : tuple, default=(1920, 1080)
+        Screen dimensions in pixels (width, height).
+        Used to set the drawing canvas size and scale background images.
+    stimuli : str or numpy.ndarray, optional
+        Path to the stimulus image or a numpy array containing the image.
+        Supports various image formats and both RGB and grayscale images.
+    stimuli_name : str, optional
+        Name of the stimulus image, used for display and as default save filename.
+        If not provided, defaults to "AOIs".
+
+    Attributes
+    ----------
+    aois : dict
+        Dictionary storing AOI data, where keys are AOI names and values are lists
+        of (x, y) coordinate tuples defining the AOI vertices.
+    app : dash.Dash
+        The Dash application instance.
+    screen_dims : tuple
+        The dimensions of the drawing canvas.
+    """
     
     def __init__(self, screen_dims=(1920, 1080), stimuli=None, stimuli_name=None):
         """
@@ -559,7 +587,32 @@ class AOIDrawer:
             return "Free Form"
         
     def _shape_to_vertices(self, shape):
-        """Convert a Plotly shape to vertices."""
+        """
+        Convert a Plotly shape object to a list of vertices.
+
+        This method extracts vertex coordinates from different types of Plotly shapes
+        (path, rectangle, circle) and converts them to a consistent format.
+
+        Parameters
+        ----------
+        shape : dict
+            Plotly shape object containing shape type and coordinate information.
+
+        Returns
+        -------
+        list of tuple or None
+            List of (x, y) coordinate tuples defining the shape vertices.
+            Returns None if shape type is not recognized or conversion fails.
+
+        Notes
+        -----
+        - Handles three shape types:
+            - path: Extracts vertices from SVG path string
+            - rect: Converts rectangle coordinates to 4 vertices
+            - circle: Approximates circle/oval with 32 vertices
+        - For circles/ovals, uses evenly spaced points around the perimeter
+        - All shapes are closed by adding the first vertex at the end
+        """
         shape_type = shape.get('type', '')
         
         if shape_type == 'path':
@@ -569,13 +622,19 @@ class AOIDrawer:
                 tuple(map(float, point.strip().split(',')))
                 for point in path.split('L')
             ]
+            # Close the path by adding the first vertex at the end
+            if vertices:
+                vertices.append(vertices[0])
             return vertices
             
         elif shape_type == 'rect':
             # Convert rectangle to vertices
             x0, y0 = shape['x0'], shape['y0']
             x1, y1 = shape['x1'], shape['y1']
-            return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+            vertices = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+            # Close the rectangle by adding the first vertex at the end
+            vertices.append(vertices[0])
+            return vertices
             
         elif shape_type == 'circle':
             # Convert circle/oval to polygon approximation
@@ -594,6 +653,9 @@ class AOIDrawer:
                  center_y + radius_y * np.sin(angle))
                 for angle in angles
             ]
+            # Close the circle by adding the first vertex at the end
+            if vertices:
+                vertices.append(vertices[0])
             return vertices
             
         return None
@@ -650,16 +712,28 @@ class AOIDrawer:
         
     def run(self, debug=False, port=8051, **kwargs):
         """
-        Run the Dash server.
-        
+        Start the Dash server and run the AOI drawing application.
+
+        This method initializes and starts the web server for the AOI drawing interface.
+        The application will be accessible through a web browser at the specified port.
+
         Parameters
         ----------
         debug : bool, default=False
             Whether to run the server in debug mode
         port : int, default=8051
-            Port to run the server on
+            Port number to run the server on.
+            Make sure the port is available and not blocked by firewall.
         **kwargs : dict
-            Additional arguments to pass to dash.run_server()
+            Additional keyword arguments passed to dash.run_server().
+            See Dash documentation for available options.
+
+        Notes
+        -----
+        - The application will run until interrupted (Ctrl+C)
+        - Access the interface at http://localhost:<port>
+        - Debug mode provides additional error information
+        - Default port (8051) can be changed if already in use
         """
         self.app.run(debug=debug, port=port, **kwargs)
 

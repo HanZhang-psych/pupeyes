@@ -23,7 +23,50 @@ from ..aoi import get_fixation_aoi, compute_aoi_statistics
 from ..plot_utils import draw_heatmap
 
 class FixationViewer:
-    """An interactive web-based visualization tool for eye movement data."""
+    """An interactive web-based visualization tool for eye movement data.
+    
+    This class provides a Dash-based interface for visualizing eye movement data with 
+    multiple visualization modes (scanpath, heatmap, AOI), interactive controls, and 
+    data export capabilities.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame, optional
+        Eye movement data with columns for timestamps, coordinates, etc.
+    screen_dims : tuple, default=(1920, 1080)
+        Screen dimensions in pixels (width, height)
+    col_mapping : dict, optional
+        Column name mapping for required fields:
+        {
+            'trial_id': str or list,  # Trial identifier column(s)
+            'timestamp': str,         # Timestamp column (optional)
+            'x': str,                # X coordinate
+            'y': str,                # Y coordinate
+            'duration': str,         # Fixation duration (optional)
+            'stimuli': str           # Stimuli path/identifier
+        }
+        Note: 'trial_id' can be a single column name or a list of column names
+        that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
+    stimuli_path : str, optional
+        Base path for stimuli images
+    animation_speed : int, default=500
+        Animation playback speed in milliseconds
+    dot_size : int, default=10
+        Fixed size for fixation dots
+
+    Attributes
+    ----------
+    data : pandas.DataFrame
+        The eye movement data being visualized
+    screen_dims : tuple
+        The dimensions of the visualization canvas
+    col_mapping : dict
+        Mapping of required columns to data columns
+    aois : dict
+        Dictionary of Areas of Interest definitions
+    app : dash.Dash
+        The Dash application instance
+    """
     
     def __init__(self, data=None, screen_dims=(1920, 1080), 
                  col_mapping=None, stimuli_path=None,
@@ -102,8 +145,7 @@ class FixationViewer:
             self.app.layout = self._create_layout()
             
     def set_aois(self, aois):
-        """
-        Set Areas of Interest (AOIs) for visualization.
+        """Set Areas of Interest (AOIs) for visualization.
         
         Parameters
         ----------
@@ -165,18 +207,7 @@ class FixationViewer:
             self.aois = aois
         
     def _get_stimulus_aois(self, stim_id):
-        """Get AOIs for a specific stimulus.
-        
-        Parameters
-        ----------
-        stim_id : str
-            Stimulus identifier
-            
-        Returns
-        -------
-        dict or None
-            Dictionary of AOIs for the stimulus, or None if not found
-        """
+        """Get AOIs for a specific stimulus."""
         if not hasattr(self, 'aois') or self.aois is None:
             return None
             
@@ -651,7 +682,35 @@ class FixationViewer:
         )
 
     def _create_scanpath_figure(self, trial_id, display_options):
-        """Create the scanpath plot figure."""
+        """Create an interactive scanpath visualization.
+        
+        Parameters
+        ----------
+        trial_id : str or tuple
+            Identifier for the trial to visualize
+        display_options : list
+            List of display options to enable:
+            - 'background': Show stimulus image
+            - 'aois': Show Areas of Interest
+            - 'labels': Show fixation number labels
+
+        Returns
+        -------
+        plotly.graph_objects.Figure
+            Interactive figure with scanpath visualization including:
+            - Animated fixation sequence
+            - Duration-based color coding
+            - Background image (if enabled)
+            - Playback controls
+            - Hover information
+
+        Notes
+        -----
+        - Creates animation frames for sequential display
+        - Includes play/pause controls and frame slider
+        - Supports duration-based color coding of fixations
+        - Maintains aspect ratio and proper axis scaling
+        """
         if trial_id is None:
             return go.Figure()
             
@@ -764,7 +823,32 @@ class FixationViewer:
         return fig
 
     def _create_heatmap_figure(self, trial_id, display_options):
-        """Create the heatmap plot figure."""
+        """Create a heatmap visualization of fixation density.
+        
+        Parameters
+        ----------
+        trial_id : str or tuple
+            Identifier for the trial to visualize
+        display_options : list
+            List of display options to enable:
+            - 'background': Show stimulus image
+
+        Returns
+        -------
+        plotly.graph_objects.Figure
+            Interactive figure with heatmap visualization including:
+            - Fixation density heatmap
+            - Background image (if enabled)
+            - Color scale
+            - Hover information
+
+        Notes
+        -----
+        - Uses Gaussian kernel density estimation
+        - Supports adjustable background image opacity
+        - Maintains aspect ratio and proper axis scaling
+        - Includes interactive hover information
+        """
         if trial_id is None:
             return go.Figure()
             
@@ -831,7 +915,34 @@ class FixationViewer:
         return fig
         
     def _create_aoi_figure(self, trial_id, display_options):
-        """Create the AOI plot figure."""
+        """Create an AOI visualization with fixation overlay.
+        
+        Parameters
+        ----------
+        trial_id : str or tuple
+            Identifier for the trial to visualize
+        display_options : list
+            List of display options to enable:
+            - 'background': Show stimulus image
+            - 'aois': Show Areas of Interest
+            - 'labels': Show fixation number labels
+
+        Returns
+        -------
+        plotly.graph_objects.Figure
+            Interactive figure with AOI visualization including:
+            - AOI polygons with labels
+            - Fixations colored by AOI
+            - Background image (if enabled)
+            - Hover information
+
+        Notes
+        -----
+        - Groups fixations by AOI membership
+        - Uses distinct colors for different AOIs
+        - Supports interactive hover information
+        - Maintains aspect ratio and proper axis scaling
+        """
         if trial_id is None:
             return go.Figure()
             
@@ -969,7 +1080,29 @@ class FixationViewer:
         return fig
         
     def _create_statistics_data(self, trial_id):
-        """Create the statistics table data."""
+        """Generate statistics for the current trial and AOIs.
+        
+        Parameters
+        ----------
+        trial_id : str or tuple
+            Identifier for the trial to analyze
+
+        Returns
+        -------
+        list of dict
+            List of dictionaries containing statistics:
+            - Basic metrics (number of fixations)
+            - Duration statistics (if available)
+            - AOI-specific metrics (if AOIs defined)
+            Each dictionary has 'Metric' and 'Value' keys.
+
+        Notes
+        -----
+        - Calculates basic fixation statistics
+        - Includes duration-based metrics if available
+        - Computes AOI-specific statistics if AOIs are defined
+        - Handles missing data and edge cases
+        """
         if trial_id is None:
             return []
             
@@ -1076,15 +1209,26 @@ class FixationViewer:
 
     def run(self, debug=False, port=8050, **kwargs):
         """
-        Run the Dash server.
+        Start the Dash server and run the fixation viewer application.
+
+        This method initializes and starts the web server for the fixation viewer application.
+        The application will be accessible through a web browser at the specified port.
         
         Parameters
         ----------
-        debug : bool, default=True
+        debug : bool, default=False
             Whether to run the server in debug mode
         port : int, default=8050
             Port to run the server on
         **kwargs : dict
             Additional arguments to pass to dash.run_server()
+            See Dash documentation for available options.
+
+        Notes
+        -----
+        - The application will run until interrupted (Ctrl+C)
+        - Access the interface at http://localhost:<port>
+        - Debug mode provides additional error information
+        - Default port (8050) can be changed if already in use
         """
         self.app.run(debug=debug, port=port, **kwargs) 

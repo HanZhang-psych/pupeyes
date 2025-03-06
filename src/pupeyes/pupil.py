@@ -33,6 +33,63 @@ import plotly.express as px
 from .defaults import default_mpl, default_plotly
 
 class PupilProcessor:
+    """
+    A class for processing and analyzing pupillometry data.
+
+    This class provides methods for preprocessing pupil size data, including blink removal,
+    artifact rejection, smoothing, and baseline correction. It also includes tools for
+    data visualization and analysis.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame containing pupil size data and associated measurements
+    trial_identifier : str or list
+        Column name(s) identifying unique trials. If list, trials are uniquely
+        identified by the combination of these columns.
+    pupil_col : str
+        Column name containing pupil size measurements
+    time_col : str
+        Column name containing timestamps
+    x_col : str
+        Column name containing x-coordinates of gaze position
+    y_col : str
+        Column name containing y-coordinates of gaze position
+    samp_freq : float
+        Sampling frequency of the eye tracker in Hz
+    convert_pupil_size : bool, default=False
+        Whether to convert pupil size from area to diameter or vice versa
+    artificial_d : float, default=5
+        Artificial pupil diameter in mm, used for pupil size conversion
+    artificial_size : float, default=5663
+        Artificial pupil size in arbitrary units, used for pupil size conversion
+    recording_unit : {'diameter', 'area'}, default='diameter'
+        Unit of the recorded pupil size
+
+    Attributes
+    ----------
+    data : pd.DataFrame
+        The processed pupil data
+    summary_data : pd.DataFrame
+        Summary statistics for each trial
+    trials : pd.DataFrame
+        A dataframe of unique trial identifiers
+    params : dict
+        Dictionary storing parameters used in processing steps
+    all_pupil_cols : list
+        List of column names containing pupil data at different processing stages
+    all_steps : list
+        List of processing steps applied to the data
+
+    Notes
+    -----
+    - All processing methods return self for method chaining
+    - Most methods create new columns with processed data rather than modifying existing ones
+    - Processing parameters are stored in the params dictionary for reproducibility
+    - Summary statistics are automatically updated after each processing step
+    - artificial_d is the diameter of an artificial pupil provided by Eyelink. 
+    - artificial_size was measured for the setup of our research group and may not generalize to other setups.
+    """
 
     def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter'):
         """
@@ -117,13 +174,16 @@ class PupilProcessor:
         """
         Remove blinks from pupil data using noise-based blink detection.
 
-        Uses the based_noise_blinks_detection algorithm to identify and remove blinks from the pupil data.
-        Creates a new column with the deblinked data.
+        This method identifies and removes blinks from pupil data using the based_noise_blinks_detection 
+        algorithm. Blinks are detected based on rapid changes in pupil size characteristic of eye 
+        closure. The method processes each trial separately and creates a new column containing the 
+        deblinked data.
 
         Parameters
         ----------
         suffix : str, default='_db'
-            Suffix to append to the pupil column name for the deblinked data
+            Suffix to append to the pupil column name for the deblinked data.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_db'.
 
         Returns
         -------
@@ -132,9 +192,18 @@ class PupilProcessor:
 
         Notes
         -----
-        - Updates summary_data with deblink statistics
-        - Adds new column with suffix to data
-        - Updates all_pupil_cols and all_steps
+        - Updates summary_data with:
+            - run_deblink: Boolean indicating if deblinking was performed
+            - pct_deblink: Percentage of samples identified as blinks
+        - Creates a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
+        - Blink periods are replaced with NaN values
+        - Trials with all missing pupil data are skipped and reported
+        - Processing parameters are stored in self.params['deblink']
+
+        See Also
+        --------
+        based_noise_blinks_detection : The underlying blink detection algorithm
         """
         # store parameters
         self.params['deblink'] = {k:v for k,v in locals().items() if k != 'self'}
@@ -190,21 +259,30 @@ class PupilProcessor:
         """
         Reject artifacts from pupil data using speed and/or z-score based methods.
 
-        Identifies and removes artifacts using pupil speed and/or z-score thresholds.
-        Creates a new column with the artifact-rejected data.
+        This method identifies and removes artifacts using two possible approaches:
+        1. Speed-based: Removes samples where pupil size changes too rapidly
+        2. Z-score based: Removes extreme values based on z-score thresholds
+        
+        The method can use either approach individually or combine both.
 
         Parameters
         ----------
         suffix : str, default='_ar'
-            Suffix to append to the pupil column name for the artifact-rejected data
+            Suffix to append to the pupil column name for the artifact-rejected data.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_ar'.
         method : {'speed', 'zscore', 'both'}, default='both'
-            Method to use for artifact rejection
+            Method to use for artifact rejection:
+            - 'speed': Use only speed-based rejection
+            - 'zscore': Use only z-score based rejection
+            - 'both': Use both methods
         speed_n : int, default=16
-            Number of MADs above median speed to use as threshold
+            Number of MADs above median speed to use as threshold for speed-based rejection
         zscore_threshold : float, default=2.5
-            Z-score threshold for artifact rejection
+            Z-score threshold for artifact rejection for z-score based rejection
         zscore_allowp : float, default=0.1
-            Proportion of mean to use as minimum standard deviation
+            Proportion of mean to use as minimum standard deviation for z-score based rejection. 
+            If sd/mean < zscore_allowp, the z-score threshold is not applied.
+            This is to avoid rejecting stable data.
 
         Returns
         -------
@@ -213,9 +291,14 @@ class PupilProcessor:
 
         Notes
         -----
-        - Updates summary_data with artifact rejection statistics
-        - Adds new column with suffix to data
-        - Updates all_pupil_cols and all_steps
+        - Updates summary_data with:
+            - run_artifact: Boolean indicating if artifact rejection was performed
+            - pct_artifact: Percentage of samples identified as artifacts
+        - Creates a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
+        - Artifact periods are replaced with NaN values
+        - Trials with all missing pupil data are skipped and reported
+        - Processing parameters are stored in self.params['artifact_rejection']
         """
         # store parameters
         self.params['artifact_rejection'] = {k:v for k,v in locals().items() if k != 'self'}
@@ -290,25 +373,40 @@ class PupilProcessor:
         """
         Filter pupil data based on gaze position within a polygon.
 
-        Removes pupil data points where gaze position falls outside a specified polygon.
-        Creates a new column with the position-filtered data.
+        This method removes pupil data points where the gaze position falls outside a specified polygon.
+        This is useful for excluding data where participants were not looking at the intended region
+        of interest.
 
         Parameters
         ----------
-        vertices : List of (x,y) coordinates defining the polygon vertices, e.g., [(0,0), (0,1080), (1920,1080), (1920,0), (0,0)]
+        vertices : list of tuples
+            List of (x,y) coordinates defining the polygon vertices.
+            Must be in screen coordinates and form a closed polygon.
+            Example: [(0,0), (0,1080), (1920,1080), (1920,0), (0,0)]
         suffix : str, default='_xy'
-            Suffix to append to the pupil column name for the filtered data
+            Suffix to append to the pupil column name for the filtered data.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_xy'.
 
         Returns
         -------
         self : PupilProcessor
-            Returns self for method chaining
+            Returns self for method chaining.
 
         Notes
         -----
-        - Updates summary_data with position filtering statistics
-        - Adds new column with suffix to data
-        - Updates all_pupil_cols and all_steps
+        - Updates summary_data with:
+            - run_position: Boolean indicating if position filtering was performed
+            - pct_position: Percentage of samples outside the polygon
+        - Creates a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
+        - Samples outside the polygon are replaced with NaN values
+        - Trials with all missing pupil data are skipped and reported
+        - Processing parameters are stored in self.params['filter_position']
+
+        Raises
+        ------
+        ValueError
+            If vertices cannot be converted to float numpy array
         """
         # check if vertices can be converted to float numpy array
         try:
@@ -365,19 +463,32 @@ class PupilProcessor:
         """
         Smooth pupil data using various smoothing methods.
 
-        Applies smoothing to pupil data using rolling mean, Hann window, or Butterworth filter.
-        Creates a new column with the smoothed data.
+        This method applies signal smoothing to reduce noise in the pupil data.
+        Three smoothing methods are available:
+        1. Rolling mean: Simple moving average
+        2. Hann window: Weighted moving average using Hann window
+        3. Butterworth filter: Low-pass filter with specified cutoff
 
         Parameters
         ----------
         suffix : str, default='_sm'
-            Suffix to append to the pupil column name for the smoothed data
+            Suffix to append to the pupil column name for the smoothed data.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_sm'.
         method : {'rollingmean', 'hann', 'butter'}, default='hann'
-            Method to use for smoothing
+            Method to use for smoothing:
+            - 'rollingmean': Simple moving average
+            - 'hann': Hann window smoothing
+            - 'butter': Butterworth low-pass filter
         window : int, default=100
-            Window size for rolling mean or Hann window smoothing
+            Window size (in number of samples) for rolling mean or Hann window smoothing.
+            Not used for Butterworth filter.
         **kwargs : dict
-            Additional arguments passed to the smoothing functions
+            Additional arguments for specific smoothing methods:
+            For Butterworth filter:
+                - cutoff_freq : float
+                    Cutoff frequency in Hz. Default is 4 Hz.
+                - order : int
+                    Filter order. Default is 3.
 
         Returns
         -------
@@ -386,10 +497,22 @@ class PupilProcessor:
 
         Notes
         -----
-        - For Butterworth filter, sampling_freq and cutoff_freq must be specified in kwargs
-        - Updates summary_data with smoothing statistics
-        - Adds new column with suffix to data
-        - Updates all_pupil_cols and all_steps
+        - Updates summary_data with smoothing method and parameters
+        - Creates a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
+        - Missing values (NaN) are preserved
+        - Edge effects are minimized by:
+            - Rolling mean: Center-aligned window
+            - Hann window: Symmetric window
+            - Butterworth: Forward-backward filtering
+        - Processing parameters are stored in self.params['smooth']
+
+        Raises
+        ------
+        ValueError
+            If window size is less than 3 or not an integer
+            If method is 'butter' and cutoff_freq is not specified
+            If unknown smoothing method is specified
         """
         # store parameters
         self.params['smooth'] = {k:v for k,v in locals().items() if k != 'self'}
@@ -432,7 +555,7 @@ class PupilProcessor:
                 elif method == 'hann':
                     smoothed = groupdata[pupil_col].rolling(window=window, win_type='hann', center=True, **kwargs).mean()
                 elif method == 'butter':
-                    smoothed = lowpass_filter(groupdata[pupil_col], **kwargs)
+                    smoothed = lowpass_filter(groupdata[pupil_col], sampling_freq=self.sampling_freq, **kwargs)
                 self.data.loc[groupdata.index, new_col] = smoothed
 
                 # update summary data
@@ -458,25 +581,31 @@ class PupilProcessor:
         """
         Check for missing values in pupil data.
 
-        Calculates the percentage of missing values for each trial.
-        Updates summary data with missing value statistics.
+        This method calculates the percentage of missing values for each trial and updates
+        the summary statistics. Missing values can be either NaN or a specific value.
 
         Parameters
         ----------
         pupil_col : str, optional
-            Column name to check for missing values. If None, uses latest pupil column
+            Column name to check for missing values.
+            If None, uses the latest pupil column.
         missing_value : float or pd.NA, default=pd.NA
-            Value to consider as missing
+            Value to consider as missing.
+            Can be pd.NA for NaN values or any specific value.
 
         Returns
         -------
         self : PupilProcessor
-            Returns self for method chaining
+            Returns self for method chaining.
 
         Notes
         -----
-        - Updates summary_data with missing value statistics
-        - Updates all_steps
+        - Updates summary_data with:
+            - run_check_missing: Boolean indicating if missing check was performed
+            - missing: Percentage of missing values in each trial
+        - Updates all_steps to track processing history
+        - Trials that cannot be checked are reported
+        - Processing parameters are stored in self.params['check_missing']
         """
         # store parameters
         self.params['check_missing'] = {k:v for k,v in locals().items() if k != 'self'}
@@ -521,28 +650,42 @@ class PupilProcessor:
         """
         Interpolate missing values in pupil data.
 
-        Fills missing values using linear or spline interpolation.
-        Creates a new column with the interpolated data.
+        This method fills missing values in the pupil data using either linear or spline
+        interpolation. Trials with too many missing values (above missing_threshold) are
+        skipped to avoid unreliable interpolation.
 
         Parameters
         ----------
         suffix : str, default='_it'
-            Suffix to append to the pupil column name for the interpolated data
+            Suffix to append to the pupil column name for the interpolated data.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_it'.
         method : {'linear', 'spline'}, default='linear'
-            Method to use for interpolation
+            Method to use for interpolation:
+            - 'linear': Linear interpolation between points
+            - 'spline': Cubic spline interpolation
         missing_threshold : float, default=0.6
-            Maximum proportion of missing values allowed for interpolation
+            Maximum proportion of missing values allowed for interpolation.
+            Trials with more missing values than this threshold are skipped.
 
         Returns
         -------
         self : PupilProcessor
-            Returns self for method chaining
+            Returns self for method chaining.
 
         Notes
         -----
-        - Updates summary_data with interpolation statistics
-        - Adds new column with suffix to data
-        - Updates all_pupil_cols and all_steps
+        - Updates summary_data with:
+            - run_interpolate: Boolean indicating if interpolation was performed
+            - pct_interpolate: Percentage of interpolated values in each trial
+        - Creates a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
+        - Trials with too many missing values are skipped and reported
+        - Processing parameters are stored in self.params['interpolate']
+
+        Raises
+        ------
+        ValueError
+            If method is not 'linear' or 'spline'
         """
         if method not in ['spline', 'linear']:
             raise ValueError("Invalid method. Use 'linear' or 'spline'")
@@ -595,26 +738,34 @@ class PupilProcessor:
         """
         Resample pupil data to a new sampling rate.
 
-        Resamples data by binning into fixed time windows and aggregating values.
-        Updates the data with resampled values.
+        This method resamples the data by binning into fixed time windows and aggregating
+        values within each bin. This is useful for reducing data size or matching sampling
+        rates between different recordings.
 
         Parameters
         ----------
         bin_size_ms : int, default=10
-            Size of time bins in milliseconds
+            Size of time bins in milliseconds.
+            New sampling rate will be 1000/bin_size_ms Hz.
         agg_methods : dict, optional
-            Dictionary mapping column names to aggregation methods
+            Dictionary mapping column names to aggregation methods.
+            Example: {'pupil': 'mean', 'time': 'first', 'x': 'mean', 'y': 'mean'}
+            If None, uses 'first' for all columns.
 
         Returns
         -------
         self : PupilProcessor
-            Returns self for method chaining
+            Returns self for method chaining.
 
         Notes
         -----
         - Updates data with resampled values
-        - Updates summary_data with resampling statistics
-        - Updates all_steps
+        - Updates summary_data with:
+            - run_resample: Boolean indicating if resampling was performed
+        - Updates all_steps to track processing history
+        - Trials that cannot be resampled are reported
+        - Processing parameters are stored in self.params['resample']
+        - Original sampling rate is preserved in self.samp_freq
         """
         # store parameters
         self.params['resample'] = {k: v for k, v in locals().items() if k != 'self'}
@@ -689,20 +840,25 @@ class PupilProcessor:
         baseline_range : list, default=[None, None]
             Start and end indices for baseline period
         suffix : str, default='_bc'
-            Suffix to append to the pupil column name for the corrected data
+            Suffix to append to the pupil column name for the corrected data.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_bc'.
         method : {'subtractive', 'divisive'}, default='subtractive'
-            Method to use for baseline correction
+            Method to use for baseline correction:
+            - 'subtractive': Subtract baseline mean from pupil data
+            - 'divisive': Divide pupil data by baseline mean
 
         Returns
         -------
         self : PupilProcessor
-            Returns self for method chaining
+            Returns self for method chaining.
 
         Notes
         -----
-        - Updates summary_data with baseline correction statistics
-        - Adds new column with suffix to data
-        - Updates all_pupil_cols and all_steps
+        - Updates summary_data with:
+            - run_baseline_correction: Boolean indicating if baseline correction was performed
+            - baseline: Mean baseline value used for correction
+        - Adds a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
         """
         # check for valid method
         if method not in ['subtractive', 'divisive']:
@@ -881,7 +1037,11 @@ class PupilProcessor:
 
         Notes
         -----
-        - Adds 'trace_outlier', 'trace_upper', 'trace_lower' columns to summary data
+        - Updates summary_data with:
+            - run_trace_outlier: Boolean indicating if trace outlier detection was performed
+            - trace_outlier: Boolean indicating if trial is an outlier
+            - trace_upper: Upper threshold for outlier detection
+            - trace_lower: Lower threshold for outlier detection
         - Outlier detection uses median absolute deviation (MAD) method
         - Can detect outliers globally or within groups specified by outlier_by
         """
@@ -1010,23 +1170,30 @@ class PupilProcessor:
         """
         Mark trials as valid/invalid based on exclusion criteria.
 
+        This method adds a 'valid' column to both the data and summary_data, marking
+        trials as valid or invalid based on the provided exclusion criteria.
+
         Parameters
         ----------
         trials_to_exclude : pandas.DataFrame
             DataFrame containing trial identifiers to exclude.
+            Must have columns matching the trial_identifier of the PupilProcessor.
         invert_mask : bool, default=False
-            If True, excludes all trials except those specified.
+            If True, excludes all trials except those specified in trials_to_exclude.
+            If False, excludes only the trials specified in trials_to_exclude.
 
         Returns
         -------
-        self : object
+        self : PupilProcessor
             Returns self for method chaining.
 
         Notes
         -----
-        Adds 'valid' column to both summary_data and data.
+        - Adds 'valid' column to both summary_data and data
+        - Valid column is boolean: True for valid trials, False for invalid trials
+        - Trials are matched based on trial_identifier columns
+        - Duplicate entries in trials_to_exclude are automatically removed
         """
-
         # drop duplicates
         trials_to_exclude = trials_to_exclude.drop_duplicates()
 
@@ -2309,12 +2476,21 @@ class PupilProcessor:
 
     def save(self, path):
         """
-        Save object to file using dill.
+        Save PupilProcessor object to file using dill serialization.
+
+        This method saves the entire PupilProcessor object, including all data and processing
+        history, to a file for later use.
 
         Parameters
         ----------
         path : str
-            Path to save file.
+            Path where the object should be saved.
+            Should include the file extension (e.g., '.pkl').
+
+        Raises
+        ------
+        FileExistsError
+            If a file already exists at the specified path.
         """
         # check if file exists
         if os.path.exists(path):
@@ -2327,17 +2503,26 @@ class PupilProcessor:
     @staticmethod
     def load(path):
         """
-        Load object from file using dill.
+        Load PupilProcessor object from file using dill deserialization.
+
+        This method loads a previously saved PupilProcessor object, restoring all data
+        and processing history.
 
         Parameters
         ----------
         path : str
-            Path to load file from.
+            Path to the file containing the saved PupilProcessor object.
 
         Returns
         -------
-        object
-            Loaded object.
+        PupilProcessor
+            The loaded PupilProcessor object.
+
+        Notes
+        -----
+        - The loaded object will be an exact copy of the saved object
+        - All data, parameters, and processing history are preserved
+        - Make sure the file was created using the save() method
         """
         # load data
         with open(path, 'rb') as f:
@@ -2345,12 +2530,22 @@ class PupilProcessor:
 
     def copy(self):
         """
-        Create a deep copy of the object.
+        Create a deep copy of the PupilProcessor object.
+
+        This method creates an independent copy of the PupilProcessor object, including
+        all data and processing history. Modifications to the copy will not affect the
+        original object.
 
         Returns
         -------
-        object
-            Deep copy of self.
+        PupilProcessor
+            A deep copy of the current object.
+
+        Notes
+        -----
+        - Creates a completely independent copy using copy.deepcopy
+        - All data, parameters, and processing history are copied
+        - Useful for creating alternative processing pipelines
         """
         import copy
         # deepcopy
@@ -2360,27 +2555,39 @@ class PupilProcessor:
     def combine(processors):
         """
         Combine multiple PupilProcessor instances into a single instance.
-        
+
         This method allows combining data from multiple processors that have gone through
-        identical preprocessing pipelines. This is useful when:
+        identical preprocessing pipelines. This is useful for:
         1. Processing large datasets in chunks to manage memory
         2. Adding new data to an existing processed dataset
         3. Processing data from multiple participants separately
-        
+
         Parameters
         ----------
-        processors : list
-            List of PupilProcessor instances to combine
-            
+        processors : list of PupilProcessor
+            List of PupilProcessor instances to combine.
+            All processors must have identical preprocessing settings.
+
         Returns
         -------
         PupilProcessor
-            A new PupilProcessor instance containing combined data
-            
+            A new PupilProcessor instance containing combined data.
+
+        Notes
+        -----
+        - All processors must have identical:
+            - Initialization parameters (pupil_col, time_col, etc.)
+            - Data structure (column names and order)
+            - Preprocessing steps and parameters
+            - Outlier detection settings (if used)
+        - Data and summary statistics are concatenated
+
         Raises
         ------
         ValueError
-            If processors have different preprocessing settings or incompatible data structures
+            If processors have different preprocessing settings
+            If processors have incompatible data structures
+            If no processors are provided
         """
         if not processors:
             raise ValueError("No processors provided")
@@ -2499,15 +2706,18 @@ def compute_speed(x, y):
     """
     Compute the speed of change between two arrays.
 
-    Takes two arrays x and y and computes the rate of change (speed) between corresponding points.
-    The speed is calculated as the absolute maximum of the forward and backward differences at each point.
+    This function calculates the rate of change (speed) between corresponding points in
+    two arrays. The speed is computed as the absolute maximum of the forward and backward
+    differences at each point, normalized by the time difference.
 
     Parameters
     ----------
     x : array-like
-        First array of values
+        First array of values, typically pupil measurements.
+        Must be numeric and same length as y.
     y : array-like 
-        Second array of values, must be same length as x
+        Second array of values, typically time points.
+        Must be numeric and same length as x.
 
     Returns
     -------
@@ -2537,33 +2747,46 @@ def compute_speed(x, y):
 def convert_pupil(pupil_size, artificial_d, artificial_size, recording_unit='diameter'):
     """
     Convert pupil measurements between different recording units.
-    
-    Converts pupil measurements from raw units to millimeters using calibration values.
-    Handles both diameter and area measurements.
+
+    This function converts pupil measurements from raw units (arbitrary units from the
+    eye tracker) to millimeters using calibration values from an artificial pupil.
+    It handles both diameter and area measurements.
 
     Parameters
     ----------
     pupil_size : float or array-like
-        Pupil size in recording units (diameter or area)
+        Pupil size in recording units (diameter or area).
+        Can be a single value or an array of measurements.
     artificial_d : float
-        Diameter of artificial pupil used for calibration (in mm)
+        Diameter of artificial pupil used for calibration (in mm).
+        This is the known physical size of the calibration pupil.
     artificial_size : float
-        Size of artificial pupil in recording units (diameter or area)
-    recording_unit : str, optional (default='diameter')
-        Unit of the recorded measurements - either 'diameter' or 'area'
+        Size of artificial pupil in recording units (diameter or area).
+        This is the size measured by the eye tracker for the calibration pupil.
+    recording_unit : {'diameter', 'area'}, default='diameter'
+        Unit of the recorded measurements:
+        - 'diameter': Linear scaling is applied
+        - 'area': Square root is taken before scaling
 
     Returns
     -------
     numpy.ndarray
-        Converted pupil measurements in millimeters
+        Converted pupil measurements in millimeters.
+        Will have same shape as input pupil_size.
 
     Notes
     -----
-    - The unit of artifiical_size must be the same as the unit of the actual recording (either diameter or area).
-    - The unit of artificial_d is always in mm.
-    - For diameter recordings, the function applies linear scaling.
-    - For area recordings, the function takes square root and then scales.
-    - Raises ValueError if recording_unit is invalid.
+    - The unit of artificial_size must match the recording_unit
+    - The unit of artificial_d is always in millimeters
+    - For diameter recordings: output = artificial_d * pupil_size / artificial_size
+    - For area recordings: output = artificial_d * sqrt(pupil_size / artificial_size)
+    - Useful for standardizing pupil measurements across different setups
+
+    Raises
+    ------
+    ValueError
+        If recording_unit is not 'diameter' or 'area'
+
     """
     if recording_unit == 'diameter':
         return artificial_d * pupil_size / artificial_size

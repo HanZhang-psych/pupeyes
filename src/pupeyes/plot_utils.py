@@ -19,35 +19,56 @@ import pandas as pd
 def draw_heatmap(x, y, screen_dims, durations=None, fc=6, colormap='viridis', 
                  alpha=0.7, background_img=None, return_data=False):
     """
-    Create a heatmap visualization of fixation density.
+    Create a heatmap visualization of fixation density using 2D histogram and Gaussian smoothing.
+    
+    This function generates a heatmap by first creating a 2D histogram of fixation locations,
+    then applying Gaussian smoothing to create a continuous representation of fixation density.
+    The resulting heatmap can be overlaid on a background image if provided.
     
     Parameters
     ----------
     x : array-like
-        X coordinates of fixations
+        X coordinates of fixations in screen coordinates (0 = left)
     y : array-like
-        Y coordinates of fixations
+        Y coordinates of fixations in screen coordinates (0 = top)
     screen_dims : tuple
-        Screen dimensions in pixels (width, height)
+        Screen dimensions in pixels (width, height). Used to set the histogram bins
+        and plot boundaries.
     durations : array-like, optional
-        Fixation durations for weighting
+        Fixation durations for weighting the heatmap. If provided, longer fixations
+        will contribute more to the density estimate.
     fc : float, default=6
-        Cut off frequency (-6dB) for Gaussian smoothing
+        Cut off frequency (-6dB) for Gaussian smoothing. Higher values result in
+        less smoothing.
     colormap : str, default='viridis'
-        Matplotlib colormap to use
+        Matplotlib colormap to use for the heatmap visualization
     alpha : float, default=0.7
-        Transparency of the heatmap
-    background_img : PIL.Image or numpy.ndarray, optional
-        Background image to overlay heatmap on. If a string, it is assumed to be a path to an image file.
-        If a numpy array, it is assumed to be an image array.
+        Transparency of the heatmap overlay (0 = transparent, 1 = opaque)
+    background_img : str, PIL.Image or numpy.ndarray, optional
+        Background image to overlay heatmap on. Can be:
+        - Path to an image file (str)
+        - PIL Image object
+        - Numpy array of image data
+        Image will be resized to match screen_dims if necessary.
     return_data : bool, default=False
-        If True, returns the heatmap array along with the figure
+        If True, returns the raw heatmap array instead of plotting
     
     Returns
     -------
-    tuple or matplotlib.figure.Figure
-        If return_data is True, returns (heatmap_array, (figure, axes))
-        Otherwise, returns (figure, axes)
+    tuple or numpy.ndarray
+        If return_data is True:
+            Returns the normalized heatmap array (shape: height x width)
+        If return_data is False:
+            Returns (figure, axes) tuple containing the plot
+    
+    Notes
+    -----
+    - The heatmap is generated using numpy.histogram2d and smoothed using a 
+      Gaussian filter
+    - The coordinate system uses screen coordinates where (0,0) is at the top-left
+    - The heatmap values are normalized to the range [0,1]
+    - When using a background image, the heatmap is overlaid with the specified
+      alpha transparency
     """
     # Generate heatmap using histogram2d and gaussian smoothing
     heatmap = np.histogram2d(
@@ -100,42 +121,62 @@ def draw_scanpath(x, y, screen_dims, durations=None, dot_size_scale=3.0, line_wi
                  dot_cmap='viridis', line_cmap='coolwarm', dot_alpha=0.8, line_alpha=0.5,
                  background_img=None, show_labels=True, label_offset=(5, 5)):
     """
-    Create a visualization of fixation sequence with numbered points and connecting lines.
+    Create a visualization of fixation sequence (scanpath) with numbered points and connecting lines.
+    
+    This function visualizes the sequence of fixations by plotting points at fixation locations
+    and connecting them with lines to show the order. The points can be sized by fixation duration
+    and colored using a colormap. The connecting lines use a different colormap to show sequence order.
     
     Parameters
     ----------
     x : array-like
-        X coordinates of fixations
+        X coordinates of fixations in screen coordinates (0 = left)
     y : array-like
-        Y coordinates of fixations
+        Y coordinates of fixations in screen coordinates (0 = top)
     screen_dims : tuple
-        Screen dimensions in pixels (width, height)
+        Screen dimensions in pixels (width, height). Used to set plot boundaries.
     durations : array-like, optional
-        Fixation durations for dot sizing
+        Fixation durations in milliseconds. If provided, dot sizes will be scaled
+        by the square root of duration.
     dot_size_scale : float, default=3.0
-        Base size for dots if no duration data, or scaling factor for dot sizes with duration
+        Base size for dots if no duration data, or scaling factor for dot sizes 
+        when durations are provided. Larger values = bigger dots.
     line_width : float, default=1.0
-        Width of the connecting lines
+        Width of the lines connecting fixation points
     dot_cmap : str, default='viridis'
-        Colormap for dots (representing duration if provided)
+        Colormap for dots. If durations provided, represents duration.
+        If no durations, all dots will be blue.
     line_cmap : str, default='coolwarm'
-        Colormap for lines (representing sequence order)
+        Colormap for connecting lines to show sequence order.
+        Earlier saccades are colored differently from later ones.
     dot_alpha : float, default=0.8
-        Transparency of dots
+        Transparency of fixation dots (0 = transparent, 1 = opaque)
     line_alpha : float, default=0.5
-        Transparency of lines
-    background_img : PIL.Image or numpy.ndarray, optional
-        Background image to overlay on the plot. If a string, it is assumed to be a path to an image file.
-        If a numpy array, it is assumed to be an image array.
+        Transparency of connecting lines (0 = transparent, 1 = opaque)
+    background_img : str, PIL.Image or numpy.ndarray, optional
+        Background image to overlay scanpath on. Can be:
+        - Path to an image file (str)
+        - PIL Image object
+        - Numpy array of image data
+        Image will be resized to match screen_dims if necessary.
     show_labels : bool, default=True
-        Whether to show numeric labels for fixation order
+        Whether to show numeric labels for fixation sequence order
     label_offset : tuple, default=(5, 5)
-        Offset for label positions in pixels
+        (x, y) offset in pixels for the position of numeric labels relative
+        to fixation points
     
     Returns
     -------
     tuple
-        (figure, axes) containing the plot
+        (figure, axes) tuple containing the plot
+    
+    Notes
+    -----
+    - The coordinate system uses screen coordinates where (0,0) is at the top-left
+    - Dot sizes are scaled by sqrt(duration) if durations are provided
+    - When using a background image, it is displayed with 40% opacity
+    - Fixation sequence is numbered starting from 1
+    - Lines between fixations show the saccade paths
     """
     # Create figure
     fig, ax = plt.subplots()
@@ -193,33 +234,58 @@ def draw_scanpath(x, y, screen_dims, durations=None, dot_size_scale=3.0, line_wi
 
 def draw_aois(aois, screen_dims, x=None, y=None, background_img=None, alpha=0, colors=None, save=None):
     """
-    Draw AOIs on a plot, optionally with fixation points and a background stimulus image.
+    Draw Areas of Interest (AOIs) and optionally plot fixation points within them.
+    
+    This function visualizes AOIs as polygons and can optionally show fixation points
+    colored according to which AOI they fall within. AOIs are drawn as outlined polygons
+    with optional fill color and can be overlaid on a background image.
     
     Parameters
     ----------
     aois : dict
-        Dictionary mapping AOI names to lists of (x, y) vertex coordinates. 
-        For example, {'AOI1': [(100, 100), (200, 100), (200, 200), (100, 200)]}
+        Dictionary mapping AOI names to lists of (x, y) vertex coordinates defining
+        the AOI polygons. The last vertext should be the same as the first vertex 
+        to close the polygon.
+        Example: {'AOI1': [(100, 100), (200, 100), (200, 200), (100, 200), (100, 100)]}
     screen_dims : tuple
-        Screen dimensions in pixels (width, height)
+        Screen dimensions in pixels (width, height). Used to set plot boundaries
+        and maintain correct aspect ratio.
     x : array-like, optional
-        X-coordinates of fixation points to plot
+        X coordinates of fixation points in screen coordinates (0 = left).
+        If provided along with y, points will be plotted and colored based on
+        which AOI they fall within.
     y : array-like, optional
-        Y-coordinates of fixation points to plot
-    background_img : PIL.Image or numpy.ndarray, optional
-        Background image to overlay AOIs on. If a string, it is assumed to be a path to an image file.
-        If a numpy array, it is assumed to be an image array.
-    alpha : float, optional
-        Transparency of AOI fill colors (0-1)
+        Y coordinates of fixation points in screen coordinates (0 = top)
+    background_img : str, PIL.Image or numpy.ndarray, optional
+        Background image to overlay AOIs on. Can be:
+        - Path to an image file (str)
+        - PIL Image object
+        - Numpy array of image data
+        Image will be resized to match screen_dims if necessary.
+    alpha : float, default=0
+        Fill transparency for AOI polygons (0 = transparent, 1 = opaque).
+        The outlines remain fully opaque regardless of this value.
     colors : dict, optional
-        Dictionary mapping AOI names to colors. If None, uses default colors.
+        Dictionary mapping AOI names to colors for both the AOI polygons
+        and their associated fixation points. If None, uses matplotlib's
+        tab20 colormap to assign colors automatically.
     save : str, optional
-        Path to save the plot
+        Path where the plot should be saved. If None, plot is not saved
+        to disk.
     
     Returns
     -------
     tuple
-        (figure, axes) containing the plot
+        (figure, axes) tuple containing the plot
+    
+    Notes
+    -----
+    - The coordinate system uses screen coordinates where (0,0) is at the top-left
+    - AOIs are drawn with solid outlines and optional transparent fill
+    - When background_img is provided, it is displayed with 40% opacity
+    - Fixation points outside any AOI are colored gray
+    - A legend is automatically added showing AOI names
+    - The plot maintains the correct aspect ratio based on screen dimensions
     """
     # Set figure size based on screen dimensions, maintaining aspect ratio
     aspect_ratio = screen_dims[1] / screen_dims[0]

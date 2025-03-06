@@ -45,16 +45,37 @@ def _smooth(x, window_len):
 
 def based_noise_blinks_detection(pupil_size, sampling_freq):
 	"""
-	Function to find blinks and return blink onset and offset indices
-	Adapted from: R. Hershman, A. Henik, and N. Cohen, “A novel blink detection method based on pupillometry noise,” Behav. Res. Methods, vol. 50, no. 1, pp. 107–114, 2018.
+	Function to find blinks and return blink onset and offset indices.
 
-	Input:
-		pupil_size          : [numpy array/list] of pupil size data for left/right eye
-		sampling_freq       : [float] sampling frequency of eye tracking hardware (default = 1000 Hz)
-		concat              : [boolean] concatenate close blinks/missing trials or not. See R. Hershman et. al. for more information
-		concat_gap_interval : [float] interval between successive missing samples/blinks to concatenate
-	Output:
-		blinks              : [dictionary] {"blink_onset", "blink_offset"} containing numpy array/list of blink onset and offset indices
+	Adapted from: R. Hershman, A. Henik, and N. Cohen, "A novel blink detection method 
+	based on pupillometry noise," Behav. Res. Methods, vol. 50, no. 1, pp. 107–114, 2018.
+
+	Parameters
+	----------
+	pupil_size : array-like
+		Array of pupil size data for left/right eye
+	sampling_freq : float
+		Sampling frequency of eye tracking hardware (default = 1000 Hz)
+
+	Returns
+	-------
+	dict
+		Dictionary with keys:
+		- "blink_onset" : array of blink onset indices
+		- "blink_offset" : array of blink offset indices
+
+	Notes
+	-----
+	The function handles several edge cases:
+	1. No blinks in the data
+	2. Data starts with a blink
+	3. Data ends with a blink
+
+	The algorithm:
+	1. Smooths the data to increase difference between measurement noise and eyelid signal
+	2. Finds monotonically increasing and decreasing sections
+	3. Updates blink onsets and offsets using these sections
+	4. Concatenates close blinks/missing trials if they are within 100ms
 	"""
 	sampling_interval = 1000 // sampling_freq
 	concat_gap_interval = 100
