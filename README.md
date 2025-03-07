@@ -3,7 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<YOUR URL HERE>)
-[![GitHub issues](https://img.shields.io/github/issues/ihrke/pypillometry)](https://github.com/ihrke/pypillometry/issues)
+[![GitHub issues](https://img.shields.io/github/issues/ihrke/pypillometry)](https://github.com/HanZhang-psych/pupeyes/issues)
 
 ## Overview
 
