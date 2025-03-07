@@ -3,9 +3,6 @@
 """
 Eyelink Data Parsing Module
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module is designed for parsing Eyelink ASC data. It provides functionalities to parse messages, 
 samples, fixations, saccades, and blinks.
 
@@ -44,6 +41,8 @@ class EyelinkReader:
     add_cols : dict, optional
         Additional columns to add to output DataFrames. The dictionary should be in the format {'column_name': column_data}. 
         For example, to add a column 'subject' with value 'S01' to all rows, use {'subject': 'S01'}.
+    progress_bar : bool, optional
+        If True, shows a progress bar while reading the data file. Default is True.
 
     Attributes
     ----------
@@ -53,21 +52,6 @@ class EyelinkReader:
         Extracted messages from the data file
     metadata : dict
         Metadata from the Eyelink data file
-
-    Methods
-    -------
-    parse_eyelink_data()
-        Loads the raw Eyelink data file
-    get_messages()
-        Extracts message events from the data
-    get_samples(parse_messages=True)
-        Retrieves sample data points
-    get_fixations(strict=True, parse_messages=True)
-        Extracts fixation events
-    get_saccades(strict=True, remove_blinks=True, srt=True, parse_messages=True)
-        Extracts saccade events
-    get_blinks(strict=True, parse_messages=True)
-        Extracts blink events
 
     Examples
     --------
@@ -80,7 +64,7 @@ class EyelinkReader:
     ... )
     """
 
-    def __init__(self, path, start_msg, stop_msg, msg_format, delimiter, add_cols=None):
+    def __init__(self, path, start_msg, stop_msg, msg_format, delimiter, add_cols=None, progress_bar=True):
         """
         Initialize EyelinkReader for processing eye tracking data.
 
@@ -100,6 +84,8 @@ class EyelinkReader:
         add_cols : dict, optional
             Additional columns to add to output DataFrames. For example:
             {'subject': 'S01', 'session': 1}
+        progress_bar : bool, optional
+            If True, shows a progress bar while reading the data file. Default is True.
         """
         self.path = path
         self.start_msg = start_msg
@@ -107,10 +93,10 @@ class EyelinkReader:
         self.msg_format = msg_format
         self.delimiter = delimiter
         self.add_cols = add_cols
-        self.data, self.metadata = self.parse_eyelink_data()
+        self.data, self.metadata = self.parse_eyelink_data(progress_bar)
         self.messages = self.get_messages()
 
-    def parse_eyelink_data(self):
+    def parse_eyelink_data(self, progress_bar):
         """
         Loads and parses raw Eyelink data from the specified file.
 
@@ -121,15 +107,18 @@ class EyelinkReader:
         -------
         tuple
             A tuple containing:
-            - pd.DataFrame: The parsed Eyelink data
-            - dict: Metadata from the Eyelink file
+
+            - pd.DataFrame
+                The parsed Eyelink data
+            - dict
+                Metadata from the Eyelink file
 
         Notes
         -----
         The read_edf function is adapted from the pygaze package 
         https://github.com/esdalmaijer/PyGazeAnalyser
         """
-        data, metadata = read_edf(self.path, start=self.start_msg, stop=self.stop_msg) 
+        data, metadata = read_edf(self.path, start=self.start_msg, stop=self.stop_msg, progress_bar=progress_bar) 
         return pd.DataFrame(data), metadata
 
     def get_messages(self):
@@ -143,10 +132,14 @@ class EyelinkReader:
         -------
         pd.DataFrame
             DataFrame containing processed message data with columns:
-            - id: Message identifier
-            - trackertime: Eye tracker timestamps
-            - message: Raw message string
-            Additional columns are added based on msg_format specification
+
+            - id : int
+                Message identifier
+            - trackertime : float
+                Eye tracker timestamps
+            - message : str
+                Raw message string
+            - Additional columns are added based on msg_format specification.
 
         Notes
         -----
@@ -183,16 +176,24 @@ class EyelinkReader:
         -------
         pd.DataFrame
             DataFrame containing processed sample data with columns:
-            - trialtime: Trial timestamps
-            - trackertime: Eye tracker timestamps
-            - x: X coordinates of gaze position
-            - y: Y coordinates of gaze position
-            - pp: Pupil size measurements (arbitrary unit; measurement unit [area/diameter] 
-                 depends on recording setting)
-            - msg: Raw message strings
-            - msgtime: Message timestamps
-            Additional columns from message parsing if parse_messages=True
-            Additional columns from self.add_cols if specified
+
+            - trialtime : float
+                Trial timestamps
+            - trackertime : float
+                Eye tracker timestamps
+            - x : float
+                X coordinates of gaze position
+            - y : float
+                Y coordinates of gaze position
+            - pp : float
+                Pupil size measurements (arbitrary unit; measurement unit [area/diameter] 
+                depends on recording setting)
+            - msg : str
+                Raw message strings
+            - msgtime : float
+                Message timestamps
+            - Additional columns from message parsing if parse_messages=True.
+            - Additional columns from self.add_cols if specified.
 
         Notes
         -----
@@ -243,16 +244,25 @@ class EyelinkReader:
         -------
         pd.DataFrame
             DataFrame containing processed fixation data with columns:
-            - eye: Eye identifier (left/right)
-            - starttime: Start time of fixation
-            - endtime: End time of fixation
-            - duration: Duration of fixation in milliseconds
-            - endx: X-coordinate at end of fixation
-            - endy: Y-coordinate at end of fixation
-            - msg: Raw message string (if parse_messages=False)
-            - msgtime: Message timestamp
-            Additional columns from message parsing if parse_messages=True
-            Additional columns from self.add_cols if specified
+
+            - eye : str
+                Eye identifier (left/right)
+            - starttime : float
+                Start time of fixation
+            - endtime : float
+                End time of fixation
+            - duration : float
+                Duration of fixation in milliseconds
+            - endx : float
+                X-coordinate at end of fixation
+            - endy : float
+                Y-coordinate at end of fixation
+            - msg : str
+                Raw message string (if parse_messages=False)
+            - msgtime : float
+                Message timestamp
+            - Additional columns from message parsing if parse_messages=True.
+            - Additional columns from self.add_cols if specified.
 
         Notes
         -----
@@ -308,19 +318,35 @@ class EyelinkReader:
         -------
         pd.DataFrame
             DataFrame containing processed saccade data with columns:
-            - eye: Eye identifier (left/right)
-            - starttime: Start time of saccade
-            - endtime: End time of saccade
-            - duration: Duration of saccade in milliseconds
-            - startx, starty: Starting coordinates
-            - endx, endy: Ending coordinates
-            - ampl: Amplitude of saccade in degrees
-            - pv: Peak velocity in degrees/second
-            - msg: Associated message (if parse_messages=False)
-            - msgtime: Message timestamp
-            - srt: Saccade reaction time (if srt=True)
-            Additional columns from message parsing if parse_messages=True
-            Additional columns from self.add_cols if specified
+
+            - eye : str
+                Eye identifier (left/right)
+            - starttime : float
+                Start time of saccade
+            - endtime : float
+                End time of saccade
+            - duration : float
+                Duration of saccade in milliseconds
+            - startx : float
+                Starting X coordinate
+            - starty : float
+                Starting Y coordinate
+            - endx : float
+                Ending X coordinate
+            - endy : float
+                Ending Y coordinate
+            - ampl : float
+                Amplitude of saccade in degrees
+            - pv : float
+                Peak velocity in degrees/second
+            - msg : str
+                Associated message (if parse_messages=False)
+            - msgtime : float
+                Message timestamp
+            - srt : float
+                Saccade reaction time (if srt=True)
+            - Additional columns from message parsing if parse_messages=True.
+            - Additional columns from self.add_cols if specified.
 
         Notes
         -----
@@ -380,14 +406,21 @@ class EyelinkReader:
         -------
         pd.DataFrame
             DataFrame containing processed blink data with columns:
-            - eye: Eye identifier (left/right)
-            - starttime: Start time of blink
-            - endtime: End time of blink
-            - duration: Duration of blink in milliseconds
-            - msg: Message string (if parse_messages=False)
-            - msgtime: Message timestamp
-            Additional columns from message parsing if parse_messages=True
-            Additional columns from self.add_cols if specified
+
+            - eye : str
+                Eye identifier (left/right)
+            - starttime : float
+                Start time of blink
+            - endtime : float
+                End time of blink
+            - duration : float
+                Duration of blink in milliseconds
+            - msg : str
+                Message string (if parse_messages=False)
+            - msgtime : float
+                Message timestamp
+            - Additional columns from message parsing if parse_messages=True.
+            - Additional columns from self.add_cols if specified.
 
         Notes
         -----
@@ -427,7 +460,7 @@ class EyelinkReader:
         -------
         pd.DataFrame
             Filtered saccade DataFrame with blink-overlapping saccades removed,
-            with index reset to default integer index
+            with index reset to default integer index.
 
         Notes
         -----

@@ -3,9 +3,6 @@
 """
 Interactive Pupil Data Viewer
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides an interactive web application for visualizing pupil preprocessing steps.
 It uses Dash and Plotly to create an interface where users can:
 - Select individual trials

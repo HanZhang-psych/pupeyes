@@ -3,9 +3,6 @@
 """
 Eyelink Pupil Data Processing Module
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides tools for processing pupillometry data from Eyelink eye trackers.
 It includes functionality for deblinking, smoothing, baseline correction, and plotting
 pupil size data.
@@ -65,7 +62,9 @@ class PupilProcessor:
         Artificial pupil size in arbitrary units, used for pupil size conversion
     recording_unit : {'diameter', 'area'}, default='diameter'
         Unit of the recorded pupil size
-
+    progress_bar : bool, default=True
+        Whether to show a progress bar for preprocessing steps
+    
     Attributes
     ----------
     data : pd.DataFrame
@@ -91,7 +90,7 @@ class PupilProcessor:
     - artificial_size was measured for the setup of our research group and may not generalize to other setups.
     """
 
-    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter'):
+    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter', progress_bar=True):
         """
         Initialize PupilData object.
 
@@ -111,6 +110,16 @@ class PupilProcessor:
             Column name for y gaze position
         samp_freq : int
             Sampling frequency in Hz
+        convert_pupil_size : bool, default=False
+            Whether to convert pupil size from area to diameter or vice versa
+        artificial_d : float, default=5
+            Artificial pupil diameter in mm, used for pupil size conversion
+        artificial_size : float, default=5663
+            Artificial pupil size in arbitrary units, used for pupil size conversion
+        recording_unit : {'diameter', 'area'}, default='diameter'
+            Unit of the recorded pupil size
+        progress_bar : bool, default=True
+            Whether to show a progress bar for preprocessing steps
         """
         # make a copy of the data
         self.data = data.copy() 
@@ -142,7 +151,8 @@ class PupilProcessor:
         # outlier detection by info. leave as None if not performed
         self.baseline_outlier_by = None
         self.trace_outlier_by = None
-
+        # progress bar
+        self.progress_bar = progress_bar
         # check if the difference between consecutive samples is equal to a fixed value
         diff = self.data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
         if len(diff) == 1:
@@ -223,7 +233,7 @@ class PupilProcessor:
         # iterate over trials if trial_identifier is provided
         empty_trials = []
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Deblinking'):
+        for group, groupdata in tqdm(grouped, desc=f'Deblinking', disable=not self.progress_bar):
             # check if groupdata has any pupil data
             if np.all(groupdata[pupil_col].isna()):
                 empty_trials.append(group)
@@ -320,7 +330,7 @@ class PupilProcessor:
         # iterate over trials if trial_identifier is provided
         empty_trials = []
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Artifact rejection'):
+        for group, groupdata in tqdm(grouped, desc=f'Artifact rejection', disable=not self.progress_bar):
 
             # check if groupdata has any pupil data
             if np.all(groupdata[pupil_col].isna()):
@@ -431,7 +441,7 @@ class PupilProcessor:
         # iterate over trials if trial_identifier is provided
         empty_trials = []
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Filtering based on gaze position'):
+        for group, groupdata in tqdm(grouped, desc=f'Filtering based on gaze position', disable=not self.progress_bar):
             # check if groupdata has any pupil data
             if np.all(groupdata[pupil_col].isna()):
                 empty_trials.append(group)
@@ -465,6 +475,7 @@ class PupilProcessor:
 
         This method applies signal smoothing to reduce noise in the pupil data.
         Three smoothing methods are available:
+
         1. Rolling mean: Simple moving average
         2. Hann window: Weighted moving average using Hann window
         3. Butterworth filter: Low-pass filter with specified cutoff
@@ -476,9 +487,9 @@ class PupilProcessor:
             For example, if pupil column is 'pupil', the new column will be 'pupil_sm'.
         method : {'rollingmean', 'hann', 'butter'}, default='hann'
             Method to use for smoothing:
-            - 'rollingmean': Simple moving average
-            - 'hann': Hann window smoothing
-            - 'butter': Butterworth low-pass filter
+                - 'rollingmean': Simple moving average
+                - 'hann': Hann window smoothing
+                - 'butter': Butterworth low-pass filter
         window : int, default=100
             Window size (in number of samples) for rolling mean or Hann window smoothing.
             Not used for Butterworth filter.
@@ -544,7 +555,7 @@ class PupilProcessor:
         # iterate over trials if trial_identifier is provided
         empty_trials = []
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Smoothing'):
+        for group, groupdata in tqdm(grouped, desc=f'Smoothing', disable=not self.progress_bar):
 
             # check if groupdata has any pupil data
             if np.all(groupdata[pupil_col].isna()):
@@ -622,7 +633,7 @@ class PupilProcessor:
         skip_trials = []
         missing_pct = 0.0
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Checking missing values'):
+        for group, groupdata in tqdm(grouped, desc=f'Checking missing values', disable=not self.progress_bar):
             try:
                 if pd.isna(missing_value):
                     missing_pct = groupdata[pupil_col].isna().sum()/len(groupdata)
@@ -704,7 +715,7 @@ class PupilProcessor:
         # iterate over trials if trial_identifier is provided
         skip_trials = []
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Interpolating'):
+        for group, groupdata in tqdm(grouped, desc=f'Interpolating', disable=not self.progress_bar):
 
             # update summary data
             pct_missing = groupdata[pupil_col].isna().mean()
@@ -797,7 +808,7 @@ class PupilProcessor:
         # iterate over trials and aggregate data
         skip_trials = []
         all_resampled = []
-        for group, groupdata in tqdm(grouped, desc='Resampling'):
+        for group, groupdata in tqdm(grouped, desc='Resampling', disable=not self.progress_bar):
             try:
                 # group by bins and aggregate data
                 groupdata = groupdata.groupby(bins, as_index=False).agg(aggregation_methods)
@@ -887,7 +898,7 @@ class PupilProcessor:
         # iterate over trials in data
         skip_trials = []
         grouped = self.data.groupby(self.trial_identifier, sort=False)
-        for group, groupdata in tqdm(grouped, desc=f'Baseline correction'):
+        for group, groupdata in tqdm(grouped, desc=f'Baseline correction', disable=not self.progress_bar):
             # select baseline data for the current group
             baseline = baseline_means.loc[group]
 
@@ -975,7 +986,7 @@ class PupilProcessor:
             df_summary['baseline_lower'] = lower
         else:
             # calculate thresholds for each group
-            for group, groupdata in tqdm(df_summary.groupby(outlier_by, sort=False), desc='Checking baseline pupil sizes for outliers'):
+            for group, groupdata in tqdm(df_summary.groupby(outlier_by, sort=False), desc='Checking baseline pupil sizes for outliers', disable=not self.progress_bar):
                 # calculate group thresholds using pandas
                 median_baseline = groupdata['baseline'].median()
                 mad = (groupdata['baseline'] - median_baseline).abs().median()
@@ -1095,7 +1106,7 @@ class PupilProcessor:
                 df_summary.loc[np.all(df_summary[outlier_by] == group, axis=1), 'trace_lower'] = lower
 
         # mark outliers
-        for trial, trialdata in tqdm(df.groupby(self.trial_identifier, sort=False), desc='Checking pupil traces for outliers'):
+        for trial, trialdata in tqdm(df.groupby(self.trial_identifier, sort=False), desc='Checking pupil traces for outliers', disable=not self.progress_bar):
             # get max and min values
             max_val = trialdata[y].max()
             min_val = trialdata[y].min()

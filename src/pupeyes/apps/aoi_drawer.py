@@ -3,9 +3,6 @@ Interactive AOI Drawing Tool using Dash
 
 This module provides an interactive web-based tool for drawing Areas of Interest (AOIs)
 that can be used with the EyeMovementVisualizer.
-
-Author: Han Zhang
-Email: hanzh@umich.edu
 """
 
 import json

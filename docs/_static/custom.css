@@ -1,0 +1,4 @@
+/* increase the width of the page */
+.bd-page-width {
+    max-width: 90% !important;  /* default is 88rem */
+  }

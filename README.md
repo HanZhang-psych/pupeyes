@@ -1,17 +1,25 @@
-# PupEyes: Empowering Your Pupillometry and Eye Movement Data Processing
+# PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis
 
 [![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
+[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<YOUR URL HERE>)
+[![GitHub issues](https://img.shields.io/github/issues/ihrke/pypillometry)](https://github.com/ihrke/pypillometry/issues)
 
 ## Overview
 
-PupEyes is a Python package for processing and visualizing eye movement data. It provides comprehensive tools for pupil size preprocessing and fixation visualization. Its interactive tools allow you to explore your data with ease.
+PupEyes is a Python package for preprocessing and visualizing eye movement data. It handles pupil size preprocessing and supports interactive visualization of pupil size and fixation data. It was designed to streamline data preparation so you can analyze your data with ease and confidence.
 
-Check out the tutorials here: https://pupeyes.readthedocs.io/.
+**Highlights**
 
-The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project with all the data visualization tools. 
+- **Best practices**: The pupil data preprocessing pipeline is desgined based on the best practices available.
+- **Pandas integration**: Raw data is cleaned and prepared as a `pandas` dataframe, allowing you to enjoy the vast data analysis and manipulation methods offered by the `pandas` ecosystem.
+- **Interactive interface**: Multiple interactive visualizations using `Plotly Dash` allow you understand your data better.
 
-I hope PupEyes will be useful to those who are interested in eye-tracking.
+Check out detailed documentation and tutorials here: https://pupeyes.readthedocs.io/.
+
+The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project (as is always the case). While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
+
+I hope PupEyes will be useful to the eye-tracking community!
 
 ## Installation
 

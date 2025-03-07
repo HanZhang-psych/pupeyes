@@ -2,16 +2,19 @@
 EDF Reader of EyeLink Data
 
 Adapted from: https://github.com/esdalmaijer/PyGazeAnalyser/blob/master/pygazeanalyser/edfreader.py
+
 Original Author: Edwin Dalmaijer
+
 License: GPU GPL v3 
 
 Adapted By: Han Zhang <hanzh@umich.edu>
+
 Date: 12/25/2024
 
 Changes:
-- Added support for reading metadata.
-- Added support for storing the last message and its time for each sample and event.
-- Moved checking trial end to the end of the loop to allow the last line (stop MSG) to be extracted.
+	- Added support for reading metadata.
+	- Added support for storing the last message and its time for each sample and event.
+	- Moved checking trial end to the end of the loop to allow the last line (stop MSG) to be extracted.
 """
 
 __author__ = "Edwin Dalmaijer, Han Zhang"
@@ -31,6 +34,10 @@ def replace_missing(value, missing=0.0):
 	"""
 	Replace missing values in gaze position data.
 
+	Adapted from: https://github.com/esdalmaijer/PyGazeAnalyser/blob/master/pygazeanalyser/edfreader.py
+	
+	Original Author: Edwin Dalmaijer
+	
 	Parameters
 	----------
 	value : str
@@ -55,11 +62,12 @@ def replace_missing(value, missing=0.0):
 	else:
 		return float(value)
 
-def read_edf(filename, start, stop=None, missing=0.0, debug=False):
+def read_edf(filename, start, stop=None, missing=0.0, debug=False, progress_bar=True):
 	"""
 	Read EyeLink Data Format (EDF) file and extract trial data.
 
 	Adapted from: https://github.com/esdalmaijer/PyGazeAnalyser/blob/master/pygazeanalyser/edfreader.py
+	
 	Original Author: Edwin Dalmaijer
 	
 	
@@ -75,6 +83,8 @@ def read_edf(filename, start, stop=None, missing=0.0, debug=False):
 		Value to be used for missing data, by default 0.0
 	debug : bool, optional
 		If True, prints information about current processing steps, by default False
+	progress_bar : bool, optional
+		If True, shows a progress bar while reading the file, by default True
 
 	Returns
 	-------
@@ -82,18 +92,18 @@ def read_edf(filename, start, stop=None, missing=0.0, debug=False):
 		Contains two elements:
 		- data : list
 			List of dictionaries, one per trial, each containing:
-			- x : numpy.ndarray
-				Array of x positions
-			- y : numpy.ndarray
-				Array of y positions
-			- size : numpy.ndarray
-				Array of pupil sizes
-			- time : numpy.ndarray
-				Array of timestamps, t=0 at trial start
-			- trackertime : numpy.ndarray
-				Array of timestamps according to EDF
-			- events : dict
-				Dictionary containing event data
+				- x : numpy.ndarray
+					Array of x positions
+				- y : numpy.ndarray
+					Array of y positions
+				- size : numpy.ndarray
+					Array of pupil sizes
+				- time : numpy.ndarray
+					Array of timestamps, t=0 at trial start
+				- trackertime : numpy.ndarray
+					Array of timestamps according to EDF
+				- events : dict
+					Dictionary containing event data
 		- metadata : dict
 			Dictionary containing calibration and tracking information
 	"""
@@ -148,7 +158,7 @@ def read_edf(filename, start, stop=None, missing=0.0, debug=False):
 	finalline = raw[-1]
 	
 	# loop through all lines
-	for line in tqdm(raw, desc=f'Reading ASC file {filename}'):
+	for line in tqdm(raw, desc=f'Reading ASC file {filename}', disable=not progress_bar):
 		
 		# store metadata
 		if '!CAL CALIBRATION' in line:

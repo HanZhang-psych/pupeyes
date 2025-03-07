@@ -3,9 +3,6 @@
 """
 Saccade Analysis Module
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides functions for analyzing saccadic eye movements recorded with Eyelink eye trackers.
 Currently, this files only contains functions that are tailored for visual search tasks in which items are presented in a circular array (e.g., the additional singleton task).
 """
@@ -67,9 +64,13 @@ def saccade_aoi_annulus(data,
     -------
     pandas.DataFrame
         Original DataFrame with added columns:
-        - curritem: Item type ('Target', 'Singleton', 'Non-singleton', or NaN)
-        - currloc: Index of closest item position, based on the order provided in item_coords
-        - flag: Reason for invalid classification ('invalid_start_pos', 
+
+            - curritem : str
+                Item type ('Target', 'Singleton', 'Non-singleton', or NaN)
+            - currloc : int
+                Index of closest item position, based on the order provided in item_coords
+            - flag : str
+                Reason for invalid classification ('invalid_start_pos', 
                 'invalid_end_pos', 'no_item_in_range', or NaN)
 
     Notes
@@ -211,6 +212,7 @@ def saccade_aoi_angular(sample_data,
     Different from saccade_aoi_annulus(), this function uses the initial firing direction of a saccade
     to classify its destination. As a result, it also requires raw gaze position data.
     Make sure to use the same coordinate system for both sample_data and data.
+    
     Parameters
     ----------
     sample_data : pandas.DataFrame
@@ -247,9 +249,18 @@ def saccade_aoi_angular(sample_data,
     -------
     pandas.DataFrame
         Original DataFrame with added columns:
-        - curritem: Item type ('Target', 'Singleton', 'Non-singleton', or NaN)
-        - flag: Reason for invalid classification ('insufficient_samples',
+
+            - curritem : str
+                Item type ('Target', 'Singleton', 'Non-singleton', or NaN)
+            - flag : str
+                Reason for invalid classification ('insufficient_samples',
                 'big_angle', or NaN)
+
+    Notes
+    -----
+    - If a saccade starts outside the annulus, it is classified as 'invalid_start_pos'.
+    - If a saccade ends outside the annulus, it is classified as 'invalid_end_pos'.
+    - If a saccade ends too far from any item, it is classified as 'no_item_in_range'.
     """
     # Initialize new columns
     data = data.copy()
@@ -375,9 +386,19 @@ def saccade_deviation(sample_data,
     -------
     pandas.DataFrame
         Original DataFrame with added columns:
-        - deviation: Angular deviation at specified point (degrees)
-        - deviation_idx: Sample index where deviation was computed
-        - deviation_time: Timestamp where deviation was computed
+
+            - deviation : float
+                Angular deviation at specified point (degrees)
+            - deviation_idx : int
+                Sample index where deviation was computed
+            - deviation_time : float
+                Timestamp where deviation was computed
+
+    Notes
+    -----
+    - If a saccade starts outside the annulus, it is classified as 'invalid_start_pos'.
+    - If a saccade ends outside the annulus, it is classified as 'invalid_end_pos'.
+    - If a saccade ends too far from any item, it is classified as 'no_item_in_range'.
     """
     # Initialize new columns
     data = data.copy()

@@ -725,6 +725,21 @@ files = [
 sortedcontainers = ">=2.0,<3.0"
 
 [[package]]
+name = "iprogress"
+version = "0.4"
+description = "Text progress bar library for Python."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "IProgress-0.4-py3-none-any.whl", hash = "sha256:098ba92780bf0eb3f2f3a0d4109e48d1f3c8ba57d821c6838f9ccb73e4fdc576"},
+    {file = "IProgress-0.4.tar.gz", hash = "sha256:55c6bce8ad4401889330fb1125c0bf7810bfbfe0105c058f861ae91e962d51eb"},
+]
+
+[package.dependencies]
+six = "*"
+
+[[package]]
 name = "ipykernel"
 version = "6.29.5"
 description = "IPython Kernel for Jupyter"
@@ -2331,4 +2346,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "4fd62dc58d53f88ac35a3028967bb17898d20fde1f0d0f7ae3b3f9cfb88bc59f"
+content-hash = "dd1cfa50bbd5fecedb34e608a2bafa5a99a8bbabeb76bbcaf6b5d62c54fcdd2f"

@@ -1,9 +1,6 @@
 """
 Interactive Eye Movement Visualization Module using Dash
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides an interactive web-based visualization tool for eye movement data,
 including scanpath replay, heatmaps, areas of interest, and fixation sequence plots.
 """
@@ -37,14 +34,20 @@ class FixationViewer:
         Screen dimensions in pixels (width, height)
     col_mapping : dict, optional
         Column name mapping for required fields:
-        {
-            'trial_id': str or list,  # Trial identifier column(s)
-            'timestamp': str,         # Timestamp column (optional)
-            'x': str,                # X coordinate
-            'y': str,                # Y coordinate
-            'duration': str,         # Fixation duration (optional)
-            'stimuli': str           # Stimuli path/identifier
-        }
+
+            - trial_id : str or list
+                Trial identifier column(s)
+            - timestamp : str
+                Timestamp column (optional)
+            - x : str
+                X coordinate
+            - y : str
+                Y coordinate
+            - duration : str
+                Fixation duration (optional)
+            - stimuli : str
+                Stimuli path/identifier
+
         Note: 'trial_id' can be a single column name or a list of column names
         that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
     stimuli_path : str, optional
@@ -71,8 +74,7 @@ class FixationViewer:
     def __init__(self, data=None, screen_dims=(1920, 1080), 
                  col_mapping=None, stimuli_path=None,
                  animation_speed=500, dot_size=10):
-        """
-        Initialize the visualizer.
+        """Initialize the visualizer.
 
         Parameters
         ----------
@@ -82,14 +84,20 @@ class FixationViewer:
             Screen dimensions in pixels (width, height)
         col_mapping : dict, optional
             Column name mapping for required fields:
-            {
-                'trial_id': str or list,  # Trial identifier column(s)
-                'timestamp': str,         # Timestamp column (optional)
-                'x': str,                # X coordinate
-                'y': str,                # Y coordinate
-                'duration': str,         # Fixation duration (optional)
-                'stimuli': str           # Stimuli path/identifier
-            }
+
+                - trial_id : str or list
+                    Trial identifier column(s)
+                - timestamp : str
+                    Timestamp column (optional)
+                - x : str
+                    X coordinate
+                - y : str
+                    Y coordinate
+                - duration : str
+                    Fixation duration (optional)
+                - stimuli : str
+                    Stimuli path/identifier
+
             Note: 'trial_id' can be a single column name or a list of column names
             that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
         stimuli_path : str, optional
@@ -151,23 +159,29 @@ class FixationViewer:
         ----------
         aois : dict
             Can be either:
+
             1. A nested dictionary mapping stimulus IDs to AOI definitions:
-               {
-                   'stimulus1': {
-                       'aoi1': [(x1,y1), (x2,y2), ...],
-                       'aoi2': [(x1,y1), (x2,y2), ...]
-                   },
-                   'stimulus2': {
-                       'aoi1': [(x1,y1), (x2,y2), ...],
-                       'aoi3': [(x1,y1), (x2,y2), ...]
-                   }
-               }
+
+                {
+                    'stimulus1': {
+                        'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
+                        'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
+                    },
+                    'stimulus2': {
+                        'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
+                        'aoi3': [(x1,y1), (x2,y2), ..., (x1, y1)]
+                    }
+                }
+
             2. A simple dictionary of AOIs that applies to all stimuli:
-               {
-                   'aoi1': [(x1,y1), (x2,y2), ...],
-                   'aoi2': [(x1,y1), (x2,y2), ...]
-               }
-            where each AOI is defined by a list of (x,y) vertex coordinates.
+
+                {
+                    'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
+                    'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
+                }
+
+            where each AOI is defined by a list of (x,y) vertex coordinates. 
+            The last point should be the same as the first point to close the polygon.
         """
         if not isinstance(aois, dict):
             raise ValueError("AOIs must be provided as a dictionary")
@@ -690,19 +704,24 @@ class FixationViewer:
             Identifier for the trial to visualize
         display_options : list
             List of display options to enable:
-            - 'background': Show stimulus image
-            - 'aois': Show Areas of Interest
-            - 'labels': Show fixation number labels
+
+                - background : bool
+                    Show stimulus image
+                - aois : bool
+                    Show Areas of Interest
+                - labels : bool
+                    Show fixation number labels
 
         Returns
         -------
         plotly.graph_objects.Figure
             Interactive figure with scanpath visualization including:
-            - Animated fixation sequence
-            - Duration-based color coding
-            - Background image (if enabled)
-            - Playback controls
-            - Hover information
+
+                - Animated fixation sequence
+                - Duration-based color coding
+                - Background image (if enabled)
+                - Playback controls
+                - Hover information
 
         Notes
         -----
@@ -831,16 +850,19 @@ class FixationViewer:
             Identifier for the trial to visualize
         display_options : list
             List of display options to enable:
-            - 'background': Show stimulus image
+
+                - background : bool
+                    Show stimulus image
 
         Returns
         -------
         plotly.graph_objects.Figure
             Interactive figure with heatmap visualization including:
-            - Fixation density heatmap
-            - Background image (if enabled)
-            - Color scale
-            - Hover information
+
+                - Fixation density heatmap
+                - Background image (if enabled)
+                - Color scale
+                - Hover information
 
         Notes
         -----
@@ -923,18 +945,23 @@ class FixationViewer:
             Identifier for the trial to visualize
         display_options : list
             List of display options to enable:
-            - 'background': Show stimulus image
-            - 'aois': Show Areas of Interest
-            - 'labels': Show fixation number labels
+
+                - background : bool
+                    Show stimulus image
+                - aois : bool
+                    Show Areas of Interest
+                - labels : bool
+                    Show fixation number labels
 
         Returns
         -------
         plotly.graph_objects.Figure
             Interactive figure with AOI visualization including:
-            - AOI polygons with labels
-            - Fixations colored by AOI
-            - Background image (if enabled)
-            - Hover information
+
+                - AOI polygons with labels
+                - Fixations colored by AOI
+                - Background image (if enabled)
+                - Hover information
 
         Notes
         -----
@@ -1091,9 +1118,11 @@ class FixationViewer:
         -------
         list of dict
             List of dictionaries containing statistics:
-            - Basic metrics (number of fixations)
-            - Duration statistics (if available)
-            - AOI-specific metrics (if AOIs defined)
+
+                - Basic metrics (number of fixations)
+                - Duration statistics (if available)
+                - AOI-specific metrics (if AOIs defined)
+
             Each dictionary has 'Metric' and 'Value' keys.
 
         Notes
@@ -1208,8 +1237,7 @@ class FixationViewer:
         return fig 
 
     def run(self, debug=False, port=8050, **kwargs):
-        """
-        Start the Dash server and run the fixation viewer application.
+        """Start the Dash server and run the fixation viewer application.
 
         This method initializes and starts the web server for the fixation viewer application.
         The application will be accessible through a web browser at the specified port.

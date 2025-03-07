@@ -3,9 +3,6 @@
 """
 Area of Interest (AOI) Analysis Module
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides basic functions for analyzing eye tracking data in relation to Areas of Interest (AOIs).
 """
 
@@ -40,9 +37,14 @@ def get_fixation_aoi(x, y, aois):
     -------
     str or list
         If input coordinates are scalars:
-            Name of the AOI containing the point, or None if not in any AOI
+
+            - str
+                Name of the AOI containing the point, or None if not in any AOI
+
         If input coordinates are arrays:
-            List of AOI names for each point, with None for points outside all AOIs
+
+            - list
+                List of AOI names for each point, with None for points outside all AOIs
             
     Notes
     -----
@@ -117,17 +119,19 @@ def compute_aoi_statistics(x, y, aois, durations=None):
     -------
     dict
         Dictionary containing statistics for each AOI and points outside AOIs:
-        {
-            'outside': {
-                'count': int,  # number of fixations outside all AOIs
-                'total_duration': float  # total duration of outside fixations
-            },
-            'aoi_name': {
-                'count': int,  # number of fixations in this AOI
-                'total_duration': float  # total duration in this AOI
-            },
-            ...
-        }
+
+        - outside : dict
+            - count : int
+                Number of fixations outside all AOIs
+            - total_duration : float
+                Total duration of outside fixations
+
+        - aoi_name : dict
+            - count : int
+                Number of fixations in this AOI
+            - total_duration : float
+                Total duration in this AOI
+
         If durations is None, total_duration values will be 0.
         Returns empty dict if aois is empty.
         
@@ -139,8 +143,8 @@ def compute_aoi_statistics(x, y, aois, durations=None):
     Examples
     --------
     >>> aois = {
-    ...     'face': [(0,0), (100,0), (100,100), (0,100)],
-    ...     'text': [(150,0), (250,0), (250,50), (150,50)]
+    ...     'face': [(0,0), (100,0), (100,100), (0,100), (0,0)],
+    ...     'text': [(150,0), (250,0), (250,50), (150,50), (150,0)]
     ... }
     >>> x = np.array([50, 200, 300])  # points in face, text, outside
     >>> y = np.array([50, 25, 300])
@@ -207,9 +211,14 @@ if HAS_NUMBA:
         Returns
         -------
         int
-            0 : point is outside the polygon
-            1 : point is inside the polygon
-            2 : point lies exactly on the polygon's edge or vertex
+            Result code indicating point position:
+
+                - 0
+                    Point is outside the polygon
+                - 1
+                    Point is inside the polygon
+                - 2
+                    Point lies exactly on the polygon's edge or vertex
             
         Notes
         -----
@@ -277,7 +286,8 @@ if HAS_NUMBA:
         Returns
         -------
         numpy.ndarray
-            Boolean array indicating whether each point is inside the polygon
+            Boolean array indicating whether each point is inside the polygon.
+            True for points inside or on the polygon, False for points outside.
 
         Examples
         --------
@@ -316,9 +326,14 @@ else:
         Returns
         -------
         int
-            0 : point is outside the polygon
-            1 : point is inside the polygon
-            2 : point lies exactly on the polygon's edge or vertex
+            Result code indicating point position:
+
+                - 0
+                    Point is outside the polygon
+                - 1
+                    Point is inside the polygon
+                - 2
+                    Point lies exactly on the polygon's edge or vertex
             
         Notes
         -----

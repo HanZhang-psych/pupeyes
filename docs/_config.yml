@@ -1,11 +1,13 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-title: PupEyes: Empowering Your Pupillometry and Eye Movement Data Processing
+title: "PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis"
 author: Han Zhang (hanzh@umich.edu)
-logo: logo.png
+logo: logo.jpg
+copyright: "2025"
+
 # Patterns to skip when building the book. Can be glob-style (e.g. "*skip.ipynb")
-# exclude_patterns: [_build, Thumbs.db, .DS_Store, "*.ipynb_checkpoints", "[inprogress]*.ipynb"]
+exclude_patterns: [_build, Thumbs.db, .DS_Store, "*.ipynb_checkpoints", "*skip.ipynb"]
 # Auto-exclude files not in the toc
 only_build_toc_files: true
 
@@ -21,10 +23,8 @@ sphinx:
   - 'sphinx.ext.napoleon'
   - 'sphinx.ext.viewcode'
   config:
-    add_module_names: false
-    html_js_files:
-      - https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js
-    suppress_warnings: ["mystnb.unknown_mime_type"]
+    add_module_names: true
+    #suppress_warnings: ["mystnb.unknown_mime_type"]
 
 # Define the name of the latex output file for PDF builds
 latex:
@@ -45,7 +45,7 @@ repository:
 # See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
 html:
   favicon: logo.png
-  use_edit_page_button: false
+  use_edit_page_button: true
   use_issues_button: true
   use_repository_button: true
   use_download_button: true

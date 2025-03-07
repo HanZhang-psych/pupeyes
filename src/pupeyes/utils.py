@@ -3,9 +3,6 @@
 """
 Utility Functions Module
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides utility functions used across the pupeyes package, including:
 - Coordinate system conversions between Eyelink and PsychoPy
 - Point-in-polygon testing with parallel processing

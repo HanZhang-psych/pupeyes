@@ -3,16 +3,8 @@ API Reference
 
 This page contains the API reference for the ``pupeyes`` package.
 
-.. contents:: Table of Contents
-   :depth: 3
-   :local:
-   :backlinks: none
-
-Core Components
---------------
-
-Data Handling
-~~~~~~~~~~~~
+Reading Data
+----------------------------
 
 .. automodule:: pupeyes.data
    :members:
@@ -20,7 +12,7 @@ Data Handling
    :show-inheritance:
 
 Pupil Preprocessing
-~~~~~~~~~~~~~~~
+----------------------------
 
 .. automodule:: pupeyes.pupil
    :members:
@@ -28,7 +20,7 @@ Pupil Preprocessing
    :show-inheritance:
 
 Areas of Interest (AOI)
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 .. automodule:: pupeyes.aoi
    :members:
@@ -37,9 +29,9 @@ Areas of Interest (AOI)
 
 
 Interactive Applications
-------------------------
+----------------------------
 Pupil Viewer
-~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: pupeyes.apps.pupil_viewer
    :members:
@@ -47,7 +39,7 @@ Pupil Viewer
    :show-inheritance: 
 
 Fixation Viewer
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: pupeyes.apps.fixation_viewer
    :members:
@@ -55,7 +47,7 @@ Fixation Viewer
    :show-inheritance:
 
 AOI Drawer
-~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: pupeyes.apps.aoi_drawer
    :members:
@@ -64,10 +56,9 @@ AOI Drawer
 
 
 Utilities
---------
-
+----------------------------
 General Utilities
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: pupeyes.utils
    :members:
@@ -75,7 +66,7 @@ General Utilities
    :show-inheritance:
 
 Plotting Utilities
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: pupeyes.plot_utils
    :members:
@@ -84,20 +75,31 @@ Plotting Utilities
 
 
 Miscellaneous
-------------
+----------------------------
 
 Saccade Functions
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: pupeyes.saccades
    :members:
    :undoc-members:
    :show-inheritance:
 
-Default Settings
-~~~~~~~~~~~~~~
+External Modules
+----------------------------
 
-.. automodule:: pupeyes.defaults
+EDF Reader
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: pupeyes.external.edfreader
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Blink Detection
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: pupeyes.external.based_noise_blinks_detection
    :members:
    :undoc-members:
    :show-inheritance:

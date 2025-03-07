@@ -3,9 +3,6 @@
 """
 Default Settings Module
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module contains default visualization settings for matplotlib and plotly.
 """
 

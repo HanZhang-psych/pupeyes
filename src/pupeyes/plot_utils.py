@@ -1,9 +1,6 @@
 """
 Plotting Utilities for Eye Movement Data
 
-Author: Han Zhang
-Email: hanzh@umich.edu
-
 This module provides plotting functions for eye movement data visualization,
 including heatmaps, scanpaths, and areas of interest (AOIs).
 """

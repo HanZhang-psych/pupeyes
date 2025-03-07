@@ -1,15 +1,13 @@
 # coding: utf-8 
 """
+From the original code:
+
 This adaptation to Python was made with the supervision and encouragement of Upamanyu Ghose
 For more information about this adaptation and for more Python solutions, don't hesitate to contact him:
-Email: titoghose@gmail.com
-Github code repository: github.com/titoghose
 
-Note: Please install the numpy python library to use this code:
-		sudo pip install numpy (Python 2)
-		sudo pip3 install numpy (Python 3)
------------------------------------------------------------------------------------------------------------------------
-The original code was modified by Han Zhang (hanzh@umich.edu) to work with his data processing pipeline.
+Email: titoghose@gmail.com
+
+Github code repository: github.com/titoghose
 """
 import numpy as np
 
@@ -61,21 +59,21 @@ def based_noise_blinks_detection(pupil_size, sampling_freq):
 	-------
 	dict
 		Dictionary with keys:
-		- "blink_onset" : array of blink onset indices
-		- "blink_offset" : array of blink offset indices
+			- "blink_onset" : array of blink onset indices
+			- "blink_offset" : array of blink offset indices
 
 	Notes
 	-----
 	The function handles several edge cases:
-	1. No blinks in the data
-	2. Data starts with a blink
-	3. Data ends with a blink
+		1. No blinks in the data
+		2. Data starts with a blink
+		3. Data ends with a blink
 
 	The algorithm:
-	1. Smooths the data to increase difference between measurement noise and eyelid signal
-	2. Finds monotonically increasing and decreasing sections
-	3. Updates blink onsets and offsets using these sections
-	4. Concatenates close blinks/missing trials if they are within 100ms
+		1. Smooths the data to increase difference between measurement noise and eyelid signal
+		2. Finds monotonically increasing and decreasing sections
+		3. Updates blink onsets and offsets using these sections
+		4. Concatenates close blinks/missing trials if they are within 100ms
 	"""
 	sampling_interval = 1000 // sampling_freq
 	concat_gap_interval = 100
