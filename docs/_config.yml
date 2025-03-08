@@ -3,7 +3,7 @@
 
 title: "PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis"
 author: Han Zhang (hanzh@umich.edu)
-logo: ../logo.jpg
+logo: ../banner.jpg
 copyright: "2025"
 
 # Patterns to skip when building the book. Can be glob-style (e.g. "*skip.ipynb")
@@ -44,7 +44,7 @@ repository:
 # Add GitHub buttons to your book
 # See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
 html:
-  favicon: logo.jpg
+  favicon: ../favicon.jpg
   use_edit_page_button: true
   use_issues_button: true
   use_repository_button: true
