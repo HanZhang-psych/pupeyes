@@ -3,7 +3,7 @@
 
 title: "PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis"
 author: Han Zhang (hanzh@umich.edu)
-logo: logo.jpg
+logo: ../logo.jpg
 copyright: "2025"
 
 # Patterns to skip when building the book. Can be glob-style (e.g. "*skip.ipynb")
