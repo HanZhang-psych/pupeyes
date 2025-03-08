@@ -24,7 +24,7 @@ sphinx:
   - 'sphinx.ext.viewcode'
   config:
     add_module_names: true
-    #suppress_warnings: ["mystnb.unknown_mime_type"]
+    suppress_warnings: ["mystnb.unknown_mime_type"]
 
 # Define the name of the latex output file for PDF builds
 latex:
