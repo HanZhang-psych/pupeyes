@@ -13,14 +13,7 @@ build:
     python: "3.12"
   jobs:
     install:
-      - pip install dash
-      - pip install dash-bootstrap-components
-      - pip install intervaltree
-      - pip install opencv-python
-      - pip install scipy
-      - pip install seaborn
-      - pip install pillow 
-      - pip install plotly
+      - pip install -r docs/requirements.txt
       - pip install sphinx
       - pip install jupyter-book
       - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5a0
