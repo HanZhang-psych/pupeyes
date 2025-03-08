@@ -59,12 +59,12 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 If you use PupEyes in your research, please cite:
 
 ```bibtex
-@software{pupeyes2024,
+@software{pupeyes2025,
   author = {Zhang, Han},
-  title = {PupEyes: A Python Library for Pupillometry and Eye Movement Processing},
-  year = {2024},
+  title = {PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis},
+  year = {2025},
   publisher = {GitHub},
-  url = {https://github.com/yourusername/pupeyes}
+  url = {https://github.com/HanZhang-psych/pupeyes}
 }
 ```
 
