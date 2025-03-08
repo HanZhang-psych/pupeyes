@@ -17,4 +17,6 @@ __all__ = ['EyelinkReader', 'PupilProcessor', 'make_mask', 'convert_pupil',
            'FixationViewer', 'AOIDrawer', 'PupilViewer', 
            'draw_aois', 'draw_scanpath', 'draw_heatmap']
 
-__version__ = '0.1.0'
+# read version from installed package
+from importlib.metadata import version
+__version__ = version("pupeyes")
