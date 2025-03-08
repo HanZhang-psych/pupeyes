@@ -25,20 +25,20 @@ I hope PupEyes will be useful to the eye-tracking community!
 
 ### Install via `pip`
 ```bash
-# Install the package
 pip install pupeyes
 ```
-It's recommended to install PupEyes in a new virtual environment to avoid any potential conflicts with other packages. If you use Anaconda, you can follow these steps:
 
 ### Install via `conda`
+It's recommended to install PupEyes in a new virtual environment to avoid any potential conflicts with other packages. If you use Anaconda, you can follow these steps:
+
 ```bash
-# Create a new conda environment called pupeyes-env
-conda create -n pupeyes-env python=3.12
+conda create -n pupeyes-env python=3.12 # Create a new conda environment called pupeyes-env
+conda activate pupeyes-env  # Activate the environment
+```
 
-# Activate the environment
-conda activate pupeyes-env
+Then, you can install PupEyes:
 
-# Install the package
+```bash
 conda install pupeyes
 ```
 
