@@ -4,8 +4,7 @@
 format: jb-book
 root: index
 chapters:
-  - file: test
-  # - file: read_data
+  - file: read_data
   # - file: pupil_preproc
   # - file: pupil_stats
   # - file: fixation_viewer
