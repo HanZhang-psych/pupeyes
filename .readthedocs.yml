@@ -13,6 +13,7 @@ build:
   jobs:
     install:
       - pip install dash
+      - pip install dash-bootstrap-components
       - pip install jupyter-book
       - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5a0
     pre_build:
