@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](https://pupeyes.readthedocs.io/en/latest/intro.html)
 [![GitHub issues](https://img.shields.io/github/issues/HanZhang-psych/pupeyes/issues)](https://github.com/HanZhang-psych/pupeyes/issues)
-![alt text](banner.png)
+![alt text](banner.jpg)
 
 ## Overview
 
