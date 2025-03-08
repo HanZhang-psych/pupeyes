@@ -4,9 +4,9 @@
 format: jb-book
 root: intro
 chapters:
-  - file: read_data
-  - file: pupil_preproc
-  - file: pupil_stats
-  - file: fixation_viewer
-  - file: aoi_analysis
+  # - file: read_data
+  # - file: pupil_preproc
+  # - file: pupil_stats
+  # - file: fixation_viewer
+  # - file: aoi_analysis
   - file: api
