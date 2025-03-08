@@ -32,11 +32,11 @@ pip install pupeyes
 It's recommended to install PupEyes in a new virtual environment to avoid any potential conflicts with other packages. If you use Anaconda, you can follow these steps:
 
 ```bash
-conda create -n pupeyes-env python=3.12 # Create a new conda environment called pupeyes-env
-conda activate pupeyes-env  # Activate the environment
+conda create -n pupeyes-env python=3.12
+conda activate pupeyes-env
 ```
 
-Then, you can install PupEyes:
+This will create a new conda environment called pupeyes-env and activates it. Now, you can install PupEyes:
 
 ```bash
 conda install pupeyes
