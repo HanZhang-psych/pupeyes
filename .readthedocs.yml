@@ -14,6 +14,7 @@ build:
     install:
       - pip install dash
       - pip install dash-bootstrap-components
+      - requirements: docs/requirements.txt
       - pip install jupyter-book
       - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5a0
     pre_build:
@@ -29,7 +30,6 @@ build:
 #    - requirements: docs/requirements.txt
 python:
   install:
-    - requirements: docs/requirements.txt
     - method: pip
       path: .
       extra_requirements:
