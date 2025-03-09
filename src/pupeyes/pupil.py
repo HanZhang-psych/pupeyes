@@ -495,6 +495,8 @@ class PupilProcessor:
             Not used for Butterworth filter.
         **kwargs : dict
             Additional arguments for specific smoothing methods:
+            For rolling mean and hann window:
+                Check pandas.DataFrame.rolling documentation for additional arguments.
             For Butterworth filter:
                 - cutoff_freq : float
                     Cutoff frequency in Hz. Default is 4 Hz.
@@ -2805,3 +2807,145 @@ def convert_pupil(pupil_size, artificial_d, artificial_size, recording_unit='dia
         return artificial_d * np.sqrt(pupil_size) / np.sqrt(artificial_size)
     else:
         raise ValueError(f"Invalid recording unit: {recording_unit}")
+
+def prf(t, t_max=500, n=10.1):
+    """PRF function according to Hoeks and Levelt (1993)
+
+    Parameters
+    ----------
+    t : array-like
+        Time points in milliseconds.
+    t_max : float, optional
+        Location of the peak (default is 500 ms).
+    n : float, optional
+        Scale parameter (default is 10.1).
+
+    Returns
+    -------
+    numpy.ndarray
+        Normalized PRF values at each time point.
+    """
+    h = (t**n)*np.exp((-n*t)/t_max)
+
+    # normalize
+    h = h / np.max(h)
+
+    return h
+
+def generate_pupil_data(n_participants=4, n_trials=40, 
+                       trial_duration_ms=2500, baseline_duration_ms=500, 
+                       sampling_rate=1000, design_type='within',
+                       condition_effect=0.3):
+    """Generate synthetic pupil data for multiple participants, blocks, and trials
+    
+    Parameters
+    ----------
+    n_participants : int
+        Number of participants to generate
+    n_trials : int
+        Total number of trials per participant (must be even for within-subject design)
+    trial_duration_ms : int
+        Duration of stimulus presentation in milliseconds
+    baseline_duration_ms : int
+        Duration of fixation/baseline period in milliseconds
+    sampling_rate : int
+        Sampling rate in Hz
+    design_type : str
+        Either 'between' or 'within'
+    condition_effect : float
+        Effect size for condition B relative to condition A
+    """
+    # Set random seed for reproducibility
+    np.random.seed(42)
+    
+    if design_type not in ['between', 'within']:
+        raise ValueError("design_type must be either 'between' or 'within'")
+    
+    # For within-subject design, ensure n_trials is even
+    if design_type == 'within' and n_trials % 2 != 0:
+        n_trials += 1
+        print(f"Adjusted n_trials to {n_trials} for balanced design")
+    
+    # Assign participants to conditions for between-subject design
+    if design_type == 'between':
+        participant_conditions = {}
+        for p in range(1, n_participants + 1):
+            # Ensure balanced assignment to conditions
+            condition = 'B' if p <= n_participants // 2 else 'A'
+            participant_conditions[f'P{p}'] = condition
+    
+    all_data = []
+    
+    for p in range(1, n_participants + 1):
+        participant_id = f'P{p}'
+        participant_baseline = np.random.normal(3.0, 0.2)
+        
+        # Create balanced sequence of conditions for within-subject design
+        if design_type == 'within':
+            conditions = ['A'] * (n_trials // 2) + ['B'] * (n_trials // 2)
+            np.random.shuffle(conditions)
+        
+        for t in range(1, n_trials + 1):
+            # Determine condition for this trial
+            if design_type == 'between':
+                condition = participant_conditions[participant_id]
+            else:  # within
+                condition = conditions[t-1]
+            
+            n_samples_trial = int(trial_duration_ms * (sampling_rate/1000))
+            n_samples_baseline = int(baseline_duration_ms * (sampling_rate/1000))
+            n_samples = n_samples_trial + n_samples_baseline
+            time = np.arange(n_samples, dtype=int)
+            
+            event = ['fixation']*n_samples_baseline + ['stimulus']*n_samples_trial
+            
+            # Trial-level variability
+            trial_baseline = participant_baseline + np.random.normal(0, 0.05)
+            
+            # Calculate amplitude based on condition
+            base_amplitude = 0.5  # baseline amplitude for condition A
+            if condition == 'B':
+                base_amplitude += condition_effect
+            
+            peak_amplitude = base_amplitude + np.random.normal(0, 0.5)
+            peak_latency = np.random.normal(500, 50)
+
+            # Generate pupil response using PRF
+            pupil = trial_baseline + prf(
+                time, 
+                t_max=peak_latency+baseline_duration_ms
+            )*peak_amplitude
+            
+            # Add noise
+            pupil += np.random.normal(0, 0.05, n_samples)
+            
+            # Add random blinks
+            if np.random.random() < 0.3:
+                blink_start = np.random.randint(0, n_samples - 200)
+                blink_duration = np.random.randint(100, 200)
+                blink_idx = np.arange(blink_start, blink_start + blink_duration)
+                blink_idx = blink_idx[blink_idx < n_samples]
+                pupil[blink_idx] = np.nan
+            
+            # Add gaze position with drift
+            drift_x = np.cumsum(np.random.normal(0, 0.01, n_samples))
+            drift_y = np.cumsum(np.random.normal(0, 0.01, n_samples))
+            x = np.random.normal(1920/2, 20, n_samples) + drift_x
+            y = np.random.normal(1080/2, 20, n_samples) + drift_y
+            
+            trial_data = pd.DataFrame({
+                'participant': participant_id,
+                'condition': condition,
+                'trial': t,
+                'event': event,
+                'trialtime': time,
+                'pp': pupil,
+                'x': x,
+                'y': y
+            })
+            
+            all_data.append(trial_data)
+    
+    samples = pd.concat(all_data, ignore_index=True).convert_dtypes()
+    return samples
+    
