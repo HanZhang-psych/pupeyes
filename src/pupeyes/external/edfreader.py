@@ -27,7 +27,7 @@ __status__ = "Adapted"
 import copy
 import os.path
 import numpy
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import re
 
 def replace_missing(value, missing=0.0):

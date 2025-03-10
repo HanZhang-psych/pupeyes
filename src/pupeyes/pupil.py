@@ -9,7 +9,7 @@ pupil size data.
 """
 
 import warnings
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import numpy as np
 import pandas as pd
 import os
