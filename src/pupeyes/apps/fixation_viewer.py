@@ -36,7 +36,8 @@ class FixationViewer:
         Column name mapping for required fields:
 
             - trial_id : str or list
-                Trial identifier column(s)
+                Trial identifier column(s). Can be a single column name or a list of column names
+                that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
             - timestamp : str
                 Timestamp column (optional)
             - x : str
@@ -48,8 +49,6 @@ class FixationViewer:
             - stimuli : str
                 Stimuli path/identifier
 
-        Note: 'trial_id' can be a single column name or a list of column names
-        that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
     stimuli_path : str, optional
         Base path for stimuli images
     animation_speed : int, default=500
@@ -86,7 +85,8 @@ class FixationViewer:
             Column name mapping for required fields:
 
                 - trial_id : str or list
-                    Trial identifier column(s)
+                    Trial identifier column(s). Can be a single column name or a list of column names
+                    that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
                 - timestamp : str
                     Timestamp column (optional)
                 - x : str
@@ -98,8 +98,6 @@ class FixationViewer:
                 - stimuli : str
                     Stimuli path/identifier
 
-            Note: 'trial_id' can be a single column name or a list of column names
-            that together uniquely identify a trial (e.g., ['subject', 'block', 'trial'])
         stimuli_path : str, optional
             Base path for stimuli images
         animation_speed : int, default=500
@@ -160,28 +158,36 @@ class FixationViewer:
         aois : dict
             Can be either:
 
-            1. A nested dictionary mapping stimulus IDs to AOI definitions:
+            - A nested dictionary mapping stimulus IDs to AOI definitions.
 
-                {
-                    'stimulus1': {
-                        'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
-                        'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
-                    },
-                    'stimulus2': {
-                        'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
-                        'aoi3': [(x1,y1), (x2,y2), ..., (x1, y1)]
-                    }
-                }
-
-            2. A simple dictionary of AOIs that applies to all stimuli:
-
-                {
-                    'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
-                    'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
-                }
+            - A simple dictionary of AOIs that applies to all stimuli.
 
             where each AOI is defined by a list of (x,y) vertex coordinates. 
             The last point should be the same as the first point to close the polygon.
+        
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        >>> # Define AOIs for each stimulus
+        >>> aois = {
+        ...     'stimulus1': {
+        ...         'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
+        ...         'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
+        ...     },
+        ...     'stimulus2': {
+        ...         'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
+        ...         'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
+        ...     }
+        ... }
+
+        >>> # Define AOIs for all stimuli
+        >>> aois = {
+        ...     'aoi1': [(x1,y1), (x2,y2), ..., (x1, y1)],
+        ...     'aoi2': [(x1,y1), (x2,y2), ..., (x1, y1)]
+        ... }
         """
         if not isinstance(aois, dict):
             raise ValueError("AOIs must be provided as a dictionary")

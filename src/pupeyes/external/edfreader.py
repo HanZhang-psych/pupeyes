@@ -90,6 +90,7 @@ def read_edf(filename, start, stop=None, missing=0.0, debug=False, progress_bar=
 	-------
 	tuple
 		Contains two elements:
+
 		- data : list
 			List of dictionaries, one per trial, each containing:
 				- x : numpy.ndarray
@@ -103,7 +104,7 @@ def read_edf(filename, start, stop=None, missing=0.0, debug=False, progress_bar=
 				- trackertime : numpy.ndarray
 					Array of timestamps according to EDF
 				- events : dict
-					Dictionary containing event data
+					Dictionary containing event data (fixations, saccades, blinks, and messages)
 		- metadata : dict
 			Dictionary containing calibration and tracking information
 	"""

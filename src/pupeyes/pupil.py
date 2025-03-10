@@ -487,20 +487,21 @@ class PupilProcessor:
             For example, if pupil column is 'pupil', the new column will be 'pupil_sm'.
         method : {'rollingmean', 'hann', 'butter'}, default='hann'
             Method to use for smoothing:
-                - 'rollingmean': Simple moving average
-                - 'hann': Hann window smoothing
-                - 'butter': Butterworth low-pass filter
+            - 'rollingmean': Simple moving average
+            - 'hann': Hann window smoothing
+            - 'butter': Butterworth low-pass filter
         window : int, default=100
             Window size (in number of samples) for rolling mean or Hann window smoothing.
             Not used for Butterworth filter.
         **kwargs : dict
-            Additional arguments for specific smoothing methods:
-            For rolling mean and hann window:
-                Check pandas.DataFrame.rolling documentation for additional arguments.
-            For Butterworth filter:
-                - cutoff_freq : float
+            Additional arguments for specific smoothing methods.
+
+            - For rolling mean and hann window:
+                Check `pandas.DataFrame.rolling <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.rolling.html>`_ documentation for additional arguments.
+            - For Butterworth filter:
+                cutoff_freq : float
                     Cutoff frequency in Hz. Default is 4 Hz.
-                - order : int
+                order : int
                     Filter order. Default is 3.
 
         Returns
@@ -514,18 +515,6 @@ class PupilProcessor:
         - Creates a new column with suffix appended to the current pupil column name
         - Updates all_pupil_cols and all_steps to track processing history
         - Missing values (NaN) are preserved
-        - Edge effects are minimized by:
-            - Rolling mean: Center-aligned window
-            - Hann window: Symmetric window
-            - Butterworth: Forward-backward filtering
-        - Processing parameters are stored in self.params['smooth']
-
-        Raises
-        ------
-        ValueError
-            If window size is less than 3 or not an integer
-            If method is 'butter' and cutoff_freq is not specified
-            If unknown smoothing method is specified
         """
         # store parameters
         self.params['smooth'] = {k:v for k,v in locals().items() if k != 'self'}

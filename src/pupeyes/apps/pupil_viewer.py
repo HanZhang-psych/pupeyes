@@ -41,7 +41,7 @@ class PupilViewer:
 
     Attributes
     ----------
-    p : PupilProcessor
+    pupil_processor : PupilProcessor
         The PupilProcessor instance containing the data
     hue : str or None
         Column name used for plotting different components of a single trial
@@ -64,9 +64,9 @@ class PupilViewer:
         columns : list of str, optional
             List of column names to plot. Defaults to all pupil columns.
         """
-        self.p = pupil_processor
+        self.pupil_processor = pupil_processor
         self.hue = hue
-        self.columns = columns if columns is not None else self.p.all_pupil_cols
+        self.columns = columns if columns is not None else self.pupil_processor.all_pupil_cols
         self.app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
         
         # Create app layout
@@ -79,13 +79,13 @@ class PupilViewer:
         """Create the Dash app layout."""
         # Get trial options
         trial_options = []
-        for _, trial in self.p.trials.iterrows():
+        for _, trial in self.pupil_processor.trials.iterrows():
             label = ' | '.join([f"{k}: {v}" for k, v in trial.items()])
             value = {k: v for k, v in trial.items()}
             trial_options.append({'label': label, 'value': str(value)})
             
         # Get column options
-        column_options = [{'label': col, 'value': col} for col in self.p.all_pupil_cols]
+        column_options = [{'label': col, 'value': col} for col in self.pupil_processor.all_pupil_cols]
             
         return dbc.Container([
             html.H1("Pupil Preprocessing Explorer", className="text-center my-4"),
@@ -155,9 +155,9 @@ class PupilViewer:
             }
             
             # Create plot
-            fig = self.p._plot_trial_interactive(
+            fig = self.pupil_processor._plot_trial_interactive(
                 trial=trial,
-                x=self.p.time_col,
+                x=self.pupil_processor.time_col,
                 y=plot_columns,
                 hue=self.hue,
                 plot_params=plot_params
