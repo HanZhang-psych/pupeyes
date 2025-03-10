@@ -26,7 +26,7 @@ default_mpl = {
     'axes.labelweight': 'bold',
      # font settings
     'font.size': 16, # default font size
-    'font.family': 'Arial',
+    'font.family': 'sans-serif',
     'font.weight': 'normal',
     # legend settings
     'legend.fontsize': 14,
@@ -52,7 +52,7 @@ default_plotly = {
     # title settings
     'title_text': 'title',
     'title_font_size': 20,
-    'title_font_family': 'Arial',
+    'title_font_family': 'sans-serif',
     'title_font_weight': 'bold',
     'title_x': 0.5,
     'title_xanchor': 'center',

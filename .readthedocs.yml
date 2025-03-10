@@ -15,15 +15,12 @@ build:
     install:
       # needed because of testPypi
       - pip install -r docs/requirements.txt
-      - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5b0
+      - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5c0
       - pip install mne 
       - pip install joblib
       - pip install jupyter-book
       - pip install ipywidgets
     pre_build:
-      # Install font
-      - "sudo apt install ttf-mscorefonts-installer"
-      - "sudo fc-cache -f"
       # Enable ipywidgets
       - "jupyter nbextension enable --py widgetsnbextension"
       # Generate the Sphinx configuration for this Jupyter Book so it builds.
