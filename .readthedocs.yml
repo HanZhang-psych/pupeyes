@@ -13,7 +13,7 @@ build:
     python: "3.12"
   jobs:
     install:
-      #- pip install -r docs/requirements.txt
+      - pip install -r docs/requirements.txt
       - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5b0
       - pip install mne 
       - pip install joblib
