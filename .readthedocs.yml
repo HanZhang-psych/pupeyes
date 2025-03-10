@@ -20,11 +20,12 @@ build:
       - pip install joblib
       - pip install jupyter-book
       - pip install ipywidgets
+      - pip install notebook
     pre_build:
       # Enable ipywidgets
-      - "jupyter nbextension enable --py widgetsnbextension"
+      - jupyter nbextension enable --py widgetsnbextension
       # Generate the Sphinx configuration for this Jupyter Book so it builds.
-      - "jupyter-book config sphinx docs/"
+      - jupyter-book config sphinx docs/
       
 
 # Build documentation in the "docs/" directory with Sphinx
