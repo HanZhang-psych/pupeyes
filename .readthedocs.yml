@@ -22,8 +22,6 @@ build:
       - pip install ipywidgets
       - pip install notebook
     pre_build:
-      # Enable ipywidgets
-      - jupyter nbextension enable --py widgetsnbextension
       # Generate the Sphinx configuration for this Jupyter Book so it builds.
       - jupyter-book config sphinx docs/
       
