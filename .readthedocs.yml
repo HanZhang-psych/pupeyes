@@ -18,7 +18,7 @@ build:
       - pip install joblib
       - pip install sphinx
       - pip install jupyter-book
-      - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5a0
+      - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5b0
     pre_build:
       # Generate the Sphinx configuration for this Jupyter Book so it builds.
       - "jupyter-book config sphinx docs/"
