@@ -15,7 +15,7 @@ build:
     install:
       # needed because of testPypi
       - pip install -r docs/requirements.txt
-      - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5c0
+      - pip install -i https://test.pypi.org/simple/ pupeyes==0.1.5rc0
       - pip install mne 
       - pip install joblib
       - pip install jupyter-book
