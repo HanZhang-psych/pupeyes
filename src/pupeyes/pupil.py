@@ -1021,7 +1021,7 @@ class PupilProcessor:
 
         return self
         
-    def check_trace_outliers(self, x=None, y=None, outlier_by=None, n_mad_trace=4, plot=True, **kwargs):
+    def check_trace_outliers(self, time_col=None, pupil_col=None, outlier_by=None, n_mad_trace=4, plot=True, **kwargs):
         """
         Check for outlier trials based on pupil trace values.
 
@@ -1030,9 +1030,9 @@ class PupilProcessor:
 
         Parameters
         ----------
-        x : str, optional
+        time_col : str, optional
             Column name for x-axis values (time). Defaults to time column.
-        y : str, optional 
+        pupil_col : str, optional 
             Column name for pupil values. Defaults to last pupil column.
         outlier_by : str or list, optional
             Column(s) to group trials by when calculating outlier thresholds.
@@ -1064,11 +1064,11 @@ class PupilProcessor:
         df_summary = self.summary_data.copy()
 
         # get x and y columns
-        if x is None:
-            x = self.time_col
-        if y is None:
-            y = self.all_pupil_cols[-1]
-        print(f'Checking trace outliers for {y}')
+        if time_col is None:
+            time_col = self.time_col
+        if pupil_col is None:
+            pupil_col = self.all_pupil_cols[-1]
+        print(f'Checking trace outliers for {pupil_col}')
 
         # initialize outlier columns
         df_summary['trace_outlier'] = False
@@ -1078,8 +1078,8 @@ class PupilProcessor:
         # calculate outlier thresholds
         if outlier_by is None:
             # calculate thresholds for all trials
-            grand_mean = df[y].mean()
-            pupil_dist = df.groupby(self.trial_identifier)[y].apply(lambda x: (x - grand_mean).abs().max())
+            grand_mean = df[pupil_col].mean()
+            pupil_dist = df.groupby(self.trial_identifier)[pupil_col].apply(lambda x: (x - grand_mean).abs().max())
             median_dist = pupil_dist.median()
             mad = (pupil_dist - median_dist).abs().median()
             
@@ -1095,8 +1095,8 @@ class PupilProcessor:
             
             # calculate thresholds for each group
             for group, groupdata in df.groupby(outlier_by, sort=False):
-                grand_mean = groupdata[y].mean()
-                pupil_dist = groupdata.groupby(self.trial_identifier)[y].apply(lambda x: (x - grand_mean).abs().max())
+                grand_mean = groupdata[pupil_col].mean()
+                pupil_dist = groupdata.groupby(self.trial_identifier)[pupil_col].apply(lambda x: (x - grand_mean).abs().max())
                 median_dist = pupil_dist.median()
                 mad = (pupil_dist - median_dist).abs().median()
                 
@@ -1110,8 +1110,8 @@ class PupilProcessor:
         # mark outliers
         for trial, trialdata in tqdm(df.groupby(self.trial_identifier, sort=False), desc='Checking pupil traces for outliers', disable=not self.progress_bar):
             # get max and min values
-            max_val = trialdata[y].max()
-            min_val = trialdata[y].min()
+            max_val = trialdata[pupil_col].max()
+            min_val = trialdata[pupil_col].min()
 
             # get thresholds for this trial
             trial_mask = np.all(df_summary[self.trial_identifier] == trial, axis=1)
@@ -1138,7 +1138,7 @@ class PupilProcessor:
 
         # plot if requested
         if plot:
-            self.plot_spaghetti(x=x, y=y, plot_by=outlier_by, return_fig=False, **kwargs)
+            self.plot_spaghetti(time_col=time_col, pupil_col=pupil_col, plot_by=outlier_by, return_fig=False, **kwargs)
 
         return self
 
@@ -1276,11 +1276,11 @@ class PupilProcessor:
                                                       3*plot_specific_settings['layout'][0]))
         
         # update with any remaining valid kwargs
-        kwargs.update({k:v for k,v in plot_params.items() if k in kwargs})
+        kwargs.update({k:v for k,v in plot_params.items() if k not in plot_specific_settings})
         
         return plot_specific_settings, kwargs
 
-    def plot_trial(self, trial, x=None, y=None, hue=None, save=None, interactive=True, plot_params=None):
+    def plot_trial(self, trial, time_col=None, pupil_col=None, hue=None, save=None, interactive=True, plot_params=None):
         """
         Plot data for a single trial.
 
@@ -1291,9 +1291,9 @@ class PupilProcessor:
         ----------
         trial : pandas.DataFrame
             DataFrame containing trial identifier.
-        x : str, optional
-            Column name for x-axis values. Defaults to time column.
-        y : str or list, optional
+        time_col : str, optional
+            Column name for x-axis values. Defaults to time column specified during initialization.
+        pupil_col : str or list, optional
             Column name(s) for y-axis values. Defaults to all pupil columns.
         hue : str or list, optional
             Column(s) to group data by for separate lines.
@@ -1316,11 +1316,11 @@ class PupilProcessor:
 
         # plot using appropriate function
         if interactive:
-            return self._plot_trial_interactive(trial, x, y, hue, save, plot_params)
+            return self._plot_trial_interactive(trial, time_col, pupil_col, hue, save, plot_params)
         else:
-            return self._plot_trial_static(trial, x, y, hue, save, plot_params)
+            return self._plot_trial_static(trial, time_col, pupil_col, hue, save, plot_params)
 
-    def _plot_trial_static(self, trial, x=None, y=None, hue=None, save=None, plot_params=None):
+    def _plot_trial_static(self, trial, time_col=None, pupil_col=None, hue=None, save=None, plot_params=None):
         """
         Create static plot of trial data using matplotlib.
 
@@ -1328,9 +1328,9 @@ class PupilProcessor:
         ----------
         trial : pandas.DataFrame
             DataFrame containing trial identifier.
-        x : str, optional
-            Column name for x-axis values. Defaults to time column.
-        y : str or list, optional
+        time_col : str, optional
+            Column name for x-axis values. Defaults to time column specified during initialization.
+        pupil_col : str or list, optional
             Column name(s) for y-axis values. Defaults to all pupil columns.
         hue : str or list, optional
             Column(s) to group data by for separate lines
@@ -1376,30 +1376,30 @@ class PupilProcessor:
             raise ValueError(f"No data found for trial with {trial_info}")
 
         # get x and y
-        if x is None:
-            x = self.time_col # default to time column
-        if y is None:
-            y = self.all_pupil_cols # default to all pupil columns
+        if time_col is None:
+            time_col = self.time_col # default to time column
+        if pupil_col is None:
+            pupil_col = self.all_pupil_cols # default to all pupil columns
 
-        if isinstance(y, str):
-            y = [y] # make sure y is a list
+        if isinstance(pupil_col, str):
+            pupil_col = [pupil_col] # make sure pupil_col is a list
 
         # get plot settings
-        plot_specific_settings, mpl_kwargs = self._get_plot_settings(x, y, plot_params, is_interactive=False)
+        plot_specific_settings, mpl_kwargs = self._get_plot_settings(time_col, pupil_col, plot_params, is_interactive=False)
 
         # create subplots with context manager
         with mpl.rc_context(mpl_kwargs):
             fig = plt.figure()
-            for i, col in enumerate(y):
+            for i, col in enumerate(pupil_col):
                 ax = fig.add_subplot(plot_specific_settings['layout'][0], plot_specific_settings['layout'][1], i+1)
                 if hue:
                     for trial_group, groupdata in data.groupby(hue, sort=False):
 
                         # create label for legend
                         label = ', '.join([str(k) for k in trial_group]) if isinstance(trial_group, tuple) else str(trial_group)
-                        ax.plot(groupdata[x], groupdata[col], label=label)
+                        ax.plot(groupdata[time_col], groupdata[col], label=label)
                 else: # if no hue, plot all data together
-                    ax.plot(data[x], data[col])
+                    ax.plot(data[time_col], data[col])
 
                 # set labels and legend
                 ax.set_xlabel(plot_specific_settings['x_title'])
@@ -1417,7 +1417,7 @@ class PupilProcessor:
 
         return fig, ax
 
-    def _plot_trial_interactive(self, trial, x=None, y=None, hue=None, save=None, plot_params=None):
+    def _plot_trial_interactive(self, trial, time_col=None, pupil_col=None, hue=None, save=None, plot_params=None):
         """
         Create an interactive plot of trial data using Plotly.
 
@@ -1425,9 +1425,9 @@ class PupilProcessor:
         ----------
         trial : pandas.DataFrame
             DataFrame containing trial identifier.
-        x : str, optional
-            Column name for x-axis values. Defaults to time column.
-        y : str or list, optional
+        time_col : str, optional
+            Column name for x-axis values. Defaults to time column specified during initialization.
+        pupil_col : str or list, optional
             Column name(s) for y-axis values. Defaults to all pupil columns.
         hue : str or list, optional
             Column(s) to group data by for different traces
@@ -1476,16 +1476,16 @@ class PupilProcessor:
             raise ValueError(f"No data found for trial with {trial_info}")
 
         # get x and y
-        if x is None:
-            x = self.time_col # default to time column
-        if y is None:
-            y = self.all_pupil_cols # default to all pupil columns
+        if time_col is None:
+            time_col = self.time_col # default to time column
+        if pupil_col is None:
+            pupil_col = self.all_pupil_cols # default to all pupil columns
 
-        if isinstance(y, str):
-            y = [y] # make sure y is a list
+        if isinstance(pupil_col, str):
+            pupil_col = [pupil_col] # make sure pupil_col is a list
 
         # get plot settings
-        plot_specific_settings, ply_kwargs = self._get_plot_settings(x, y, plot_params, is_interactive=True)
+        plot_specific_settings, ply_kwargs = self._get_plot_settings(time_col, pupil_col, plot_params, is_interactive=True)
 
         # plot using plotly
         fig = make_subplots(rows=plot_specific_settings['layout'][0], 
@@ -1501,7 +1501,7 @@ class PupilProcessor:
         cols = plotly.colors.DEFAULT_PLOTLY_COLORS
 
         # iterate over y variables
-        for i, col in enumerate(y):
+        for i, col in enumerate(pupil_col):
             # figure out row and column
             curr_row = int(i // plot_specific_settings['layout'][1] + 1)
             curr_col = int(i % plot_specific_settings['layout'][1] + 1)
@@ -1512,7 +1512,7 @@ class PupilProcessor:
                     label = ', '.join([str(k) for k in trial_group]) if isinstance(trial_group, tuple) else str(trial_group)
                     # assign color but cycle through colors if more trials than colors
                     curr_color = cols[g % len(cols)]
-                    fig.add_trace(go.Scatter(x=groupdata[x], y=groupdata[col], 
+                    fig.add_trace(go.Scatter(x=groupdata[time_col], y=groupdata[col], 
                                              mode='lines',
                                              name=label,
                                              line=dict(color=curr_color), 
@@ -1521,7 +1521,7 @@ class PupilProcessor:
                                              row=curr_row, col=curr_col)
             else: 
                 curr_color = cols[0]
-                fig.add_trace(go.Scatter(x=data[x], y=data[col], 
+                fig.add_trace(go.Scatter(x=data[time_col], y=data[col], 
                                          mode='lines',
                                          name=col,
                                          line=dict(color=curr_color),
@@ -1661,7 +1661,7 @@ class PupilProcessor:
         # update defaults settings if provided
         mpl_kwargs = default_mpl.copy()
         mpl_kwargs['figure.figsize'] = (plot_specific_settings['layout'][1]*8,plot_specific_settings['layout'][0]*3) # ncols, nrows
-        mpl_kwargs.update({k:v for k,v in plot_params.items() if k in mpl_kwargs})
+        mpl_kwargs.update({k:v for k,v in plot_params.items() if k not in plot_specific_settings})
 
         with mpl.rc_context(mpl_kwargs):
                 
@@ -2021,7 +2021,7 @@ class PupilProcessor:
             'yanchor': 'top'
         }]
         ply_kwargs['barmode'] = 'overlay'
-        ply_kwargs.update({k:v for k,v in plot_params.items() if k in ply_kwargs})
+        ply_kwargs.update({k:v for k,v in plot_params.items() if k not in plot_specific_settings})
         
         fig.update_layout(**ply_kwargs)
 
@@ -2038,15 +2038,15 @@ class PupilProcessor:
         else:
             display(fig)
 
-    def plot_spaghetti(self, x=None, y=None, show_outliers=True, plot_by=None, save=False, plot_params=None, return_fig=True): 
+    def plot_spaghetti(self, time_col=None, pupil_col=None, show_outliers=True, plot_by=None, save=False, plot_params=None, return_fig=True): 
         """
         Plot pupil traces for all trials as a spaghetti plot.
 
         Parameters
         ----------
-        x : str, optional
-            Column name for x-axis. Defaults to time column.
-        y : str, optional 
+        time_col : str, optional
+            Column name for x-axis. Defaults to time column specified during initialization.
+        pupil_col : str, optional 
             Column name for y-axis. Defaults to latest pupil column.
         show_outliers : bool, default=True
             Whether to highlight outlier traces.
@@ -2080,10 +2080,10 @@ class PupilProcessor:
             raise ValueError("trace_outlier column not found in summary_data. Please run check_trace_outliers first.")
 
         # get x and y
-        if x is None:
-            x = self.time_col # default to time column
-        if y is None:
-            y = self.all_pupil_cols[-1] # default to last pupil column
+        if time_col is None:
+            time_col = self.time_col # default to time column
+        if pupil_col is None:
+            pupil_col = self.all_pupil_cols[-1] # default to last pupil column
 
         # get data
         df_plot = self.data.copy()
@@ -2092,17 +2092,17 @@ class PupilProcessor:
             if isinstance(plot_by, str):
                 plot_by = [plot_by]
             # get unique columns
-            cols = [x, y] + plot_by + self.trial_identifier 
+            cols = [time_col, pupil_col] + plot_by + self.trial_identifier 
             cols = list(set(cols))
             grouped = df_plot[cols].groupby(plot_by, sort=False)
         else:
-            cols = [x, y] + self.trial_identifier
+            cols = [time_col, pupil_col] + self.trial_identifier
             cols = list(set(cols))
             grouped = [(None, df_plot[cols])]
         
         # Get overall x range for threshold lines
-        x_min = df_plot[x].min()
-        x_max = df_plot[x].max()
+        x_min = df_plot[time_col].min()
+        x_max = df_plot[time_col].max()
         
         # check if outlier by is the same as plot_by
         if show_outliers and self.trace_outlier_by is not None and self.trace_outlier_by != plot_by: 
@@ -2114,8 +2114,8 @@ class PupilProcessor:
         plot_specific_settings = {
             'title': 'Spaghetti plot',
             'subplot_titles': [' | '.join([str(x) for x in group]) for group, _ in grouped] if plot_by is not None else None,
-            'x_title': x,
-            'y_title': y,
+            'x_title': time_col,
+            'y_title': pupil_col,
             # line settings
             'line_width': 2,
             'line_style': 'solid',
@@ -2139,7 +2139,7 @@ class PupilProcessor:
         ply_kwargs['yaxis_title_text'] = plot_params.get('yaxis_title_text', plot_specific_settings['y_title']) # override default y-axis title
         ply_kwargs['xaxis_showgrid'] = plot_params.get('xaxis_showgrid', plot_specific_settings['grid']) # override default x-axis grid
         ply_kwargs['yaxis_showgrid'] = plot_params.get('yaxis_showgrid', plot_specific_settings['grid']) # override default y-axis grid
-        ply_kwargs.update({k:v for k,v in plot_params.items() if k in ply_kwargs})
+        ply_kwargs.update({k:v for k,v in plot_params.items() if k not in plot_specific_settings})
 
         # plot using plotly
         fig = go.Figure()
@@ -2176,8 +2176,8 @@ class PupilProcessor:
                     downsampled = trialdata
 
                 trace = go.Scatter(
-                    x=downsampled[x],
-                    y=downsampled[y],
+                    x=downsampled[time_col],
+                    y=downsampled[pupil_col],
                     name=label,
                     mode='lines',
                     line=dict(width=plot_specific_settings['line_width']),
@@ -2272,7 +2272,7 @@ class PupilProcessor:
             display(fig)
 
 
-    def plot_evoked(self, data=None, time_col=None, pupil_col=None, condition=None, agg_by=None, error='ci', save=None, plot_params=None, **kwargs):
+    def plot_evoked(self, data=None, pupil_col=None, condition=None, agg_by=None, error='ci', save=None, plot_params=None, **kwargs):
         """
         Plot evoked pupil response.
 
@@ -2282,8 +2282,6 @@ class PupilProcessor:
         ----------
         data : str or pandas.DataFrame, optional
             Data to plot. If string, uses corresponding attribute.
-        time_col : str, optional
-            Column name for time values.
         pupil_col : str, optional
             Column name for pupil values.
         condition : str or list, optional
@@ -2300,7 +2298,14 @@ class PupilProcessor:
         save : str, optional
             Path to save plot.
         plot_params : dict, default={}
-            Additional plotting parameters.
+            Additional plotting parameters. This includes all rcParams accepted by matplotlib, as well as the following:
+            - 'title': title of plot
+            - 'x_title': x-axis label
+            - 'y_title': y-axis label
+            - 'vline_color': color of vertical line
+            - 'vline_linestyle': linestyle of vertical line
+            - 'grid': whether to show grid
+            - 'legend_labels': labels for legend
         **kwargs
             Additional arguments passed to confidence interval calculation.
 
@@ -2427,14 +2432,14 @@ class PupilProcessor:
                     print(f'Condition {comb.to_dict()}: Computing average from {grouped.ngroups} trials')
                 
                 # store array with condition name
-                cond_name = '_'.join([f'{c}_{v}' for c,v in comb.items()])
+                cond_name = '_'.join([f'{v}' for v in comb.values])
                 arrays_by_condition[cond_name] = test_array
 
         # plot settings
         plot_specific_settings = {
-        'title': 'Evoked Pupil Size',
-        'x_title': 'Time since stimulus onset (s)',
-        'y_title': 'Pupil Size',
+        'title': 'Task Evoked Pupillary Response',
+        'x_title': 'Time (s)',
+        'y_title': 'Pupil Size Change',
         'vline_color': 'red',
         'vline_linestyle': '--',
         'grid': False,
@@ -2443,7 +2448,7 @@ class PupilProcessor:
 
         plot_specific_settings.update({k:v for k,v in plot_params.items() if k in plot_specific_settings})
         mpl_kwargs = default_mpl.copy()
-        mpl_kwargs.update({k:v for k,v in plot_params.items() if k in mpl_kwargs})
+        mpl_kwargs.update({k:v for k,v in plot_params.items() if k not in plot_specific_settings})
 
         # create plot with context manager
         with mpl.rc_context(mpl_kwargs):
@@ -2809,8 +2814,9 @@ def convert_pupil(pupil_size, artificial_d, artificial_size, recording_unit='dia
         raise ValueError(f"Invalid recording unit: {recording_unit}")
 
 def prf(t, t_max=500, n=10.1):
-    """PRF function according to Hoeks and Levelt (1993)
-
+    """
+    PRF function according to Hoeks and Levelt (1993)
+    
     Parameters
     ----------
     t : array-like
@@ -2832,106 +2838,182 @@ def prf(t, t_max=500, n=10.1):
 
     return h
 
-def generate_pupil_data(n_participants=4, n_trials=40, 
-                       trial_duration_ms=2500, baseline_duration_ms=500, 
-                       sampling_rate=1000, design_type='within',
-                       condition_effect=0.3):
-    """Generate synthetic pupil data for multiple participants, blocks, and trials
-    
+def _generate_pupil_data(n_participants=6, n_trials=20, 
+                       stim_duration_ms=2000, baseline_duration_ms=500, 
+                       sampling_rate=1000, design_type='within-subject',
+                       condition_names=['A','B'],
+                       condition_effect=0.5, seed=1):
+    """Generate fake pupillometry data for experimental designs.
+
+    This function generates fake pupil size data that mimics typical task-evoked 
+    pupillary responses. It supports both between-subject and within-subject designs 
+    with two conditions. The pupil response is generated by convolving an impulse at 
+    stimulus onset with a pupil response function (PRF).
+
     Parameters
     ----------
-    n_participants : int
-        Number of participants to generate
-    n_trials : int
-        Total number of trials per participant (must be even for within-subject design)
-    trial_duration_ms : int
-        Duration of stimulus presentation in milliseconds
-    baseline_duration_ms : int
-        Duration of fixation/baseline period in milliseconds
-    sampling_rate : int
-        Sampling rate in Hz
-    design_type : str
-        Either 'between' or 'within'
-    condition_effect : float
-        Effect size for condition B relative to condition A
+    n_participants : int, default=6
+        Number of participants to simulate. For between-subject designs, this should 
+        be even to ensure balanced groups.
+    n_trials : int, default=20
+        Number of trials per participant. For within-subject designs, this will be 
+        adjusted to the nearest even number to ensure balanced conditions.
+    stim_duration_ms : int, default=2000
+        Duration of the stimulus period in milliseconds.
+    baseline_duration_ms : int, default=500
+        Duration of the pre-stimulus baseline period in milliseconds.
+    sampling_rate : int, default=1000
+        Sampling rate in Hz. Determines the temporal resolution of the data.
+    design_type : {'between-subject', 'within-subject'}, default='within-subject'
+        Type of experimental design:
+        - 'between-subject': Each participant is assigned to one condition
+        - 'within-subject': Each participant completes trials in both conditions
+    condition_names : list of str, default=['A', 'B']
+        Names of the two experimental conditions. First name is control condition,
+        second name is experimental condition.
+    condition_effect : float, default=0.5
+        Size of the experimental effect for the second condition relative to the first.
+        For example, 0.5 means condition B has 50% larger responses than condition A.
+    seed : int, optional, default=1
+        Random seed for reproducibility. Set to None for random behavior.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing the simulated pupil data with columns:
+        - participant: Participant identifier (e.g., 'P1', 'P2', ...)
+        - condition: Experimental condition
+        - trial: Trial number
+        - event: Trial phase ('fixation' or 'stimulus')
+        - trialtime: Time points in milliseconds
+        - pp: Pupil size values
+        - x: Horizontal gaze position
+        - y: Vertical gaze position
+
+    Notes
+    -----
+    These features are hard-coded:
+    - Individual differences in baseline pupil size
+    - Trial-to-trial variability in response amplitude
+    - Random blinks (30% probability per trial)
+    - Measurement noise
+    - Gaze position drift
+    - 50% probability of no response on each trial
+    
+    The pupil response is generated using the following steps:
+    - Create baseline period with participant-specific mean
+    - Generate stimulus response by convolving an impulse with PRF
+    - Add various sources of noise and artifacts
+    - Combine baseline and stimulus periods
+
+    Examples
+    --------
+    >>> # Generate data for a within-subject design
+    >>> data_within = generate_pupil_data(
+    ...     n_participants=4,
+    ...     n_trials=10,
+    ...     design_type='within-subject',
+    ...     condition_names=['low_load', 'high_load'],
+    ...     condition_effect=0.3
+    ... )
+
+    >>> # Generate data for a between-subject design
+    >>> data_between = generate_pupil_data(
+    ...     n_participants=6,
+    ...     n_trials=10,
+    ...     design_type='between-subject',
+    ...     condition_names=['control', 'treatment'],
+    ...     condition_effect=0.5
+    ... )
     """
     # Set random seed for reproducibility
-    np.random.seed(42)
+    if seed is not None:
+        np.random.seed(seed)
     
-    if design_type not in ['between', 'within']:
-        raise ValueError("design_type must be either 'between' or 'within'")
+    if design_type not in ['between-subject', 'within-subject']:
+        raise ValueError("design_type must be either 'between-subject' or 'within-subject'")
     
     # For within-subject design, ensure n_trials is even
-    if design_type == 'within' and n_trials % 2 != 0:
+    if design_type == 'within-subject' and n_trials % 2 != 0:
         n_trials += 1
         print(f"Adjusted n_trials to {n_trials} for balanced design")
     
     # Assign participants to conditions for between-subject design
-    if design_type == 'between':
+    if design_type == 'between-subject':
         participant_conditions = {}
         for p in range(1, n_participants + 1):
             # Ensure balanced assignment to conditions
-            condition = 'B' if p <= n_participants // 2 else 'A'
+            condition = condition_names[0] if p <= n_participants // 2 else condition_names[1]
             participant_conditions[f'P{p}'] = condition
     
     all_data = []
     
+    # Pre-compute PRF kernel for convolution
+    kernel_time = np.arange(stim_duration_ms)
+    t_max = 1200
+    prf_kernel = prf(kernel_time, t_max=t_max)  # peak at 1500ms
+    
     for p in range(1, n_participants + 1):
         participant_id = f'P{p}'
-        participant_baseline = np.random.normal(3.0, 0.2)
+        participant_baseline = np.random.normal(3.0, 0.05)
         
         # Create balanced sequence of conditions for within-subject design
-        if design_type == 'within':
-            conditions = ['A'] * (n_trials // 2) + ['B'] * (n_trials // 2)
+        if design_type == 'within-subject':
+            conditions = [condition_names[0]] * (n_trials // 2) + [condition_names[1]] * (n_trials // 2)
             np.random.shuffle(conditions)
         
         for t in range(1, n_trials + 1):
             # Determine condition for this trial
-            if design_type == 'between':
+            if design_type == 'between-subject':
                 condition = participant_conditions[participant_id]
-            else:  # within
+            else:  # within-subject
                 condition = conditions[t-1]
             
-            n_samples_trial = int(trial_duration_ms * (sampling_rate/1000))
+            # Calculate number of samples
+            n_samples_stim = int(stim_duration_ms * (sampling_rate/1000))
             n_samples_baseline = int(baseline_duration_ms * (sampling_rate/1000))
-            n_samples = n_samples_trial + n_samples_baseline
-            time = np.arange(n_samples, dtype=int)
             
-            event = ['fixation']*n_samples_baseline + ['stimulus']*n_samples_trial
-            
-            # Trial-level variability
+            # Generate baseline period
             trial_baseline = participant_baseline + np.random.normal(0, 0.05)
+            baseline_data = trial_baseline * np.ones(n_samples_baseline)
+            baseline_data += np.random.normal(0, 0.05, n_samples_baseline)  # Add noise to baseline
             
-            # Calculate amplitude based on condition
-            base_amplitude = 0.5  # baseline amplitude for condition A
-            if condition == 'B':
-                base_amplitude += condition_effect
+            # Generate stimulus response
+            # Create impulse at stimulus onset (t=0 in stimulus period)
+            impulse = np.zeros(n_samples_stim)
+            impulse[0] = 1.0
             
-            peak_amplitude = base_amplitude + np.random.normal(0, 0.5)
-            peak_latency = np.random.normal(500, 50)
-
-            # Generate pupil response using PRF
-            pupil = trial_baseline + prf(
-                time, 
-                t_max=peak_latency+baseline_duration_ms
-            )*peak_amplitude
+            # Add condition effect and trial-to-trial variability
+            amplitude = (condition_effect if condition == condition_names[1] else 1.0)
+            amplitude *= np.random.normal(1, 0.5)  # Add trial-to-trial variability
+            # sometimes there is no response
+            if np.random.random() < 0.5:
+                amplitude = 0
+            impulse[0] *= amplitude
             
-            # Add noise
-            pupil += np.random.normal(0, 0.05, n_samples)
+            # Convolve with PRF to get stimulus response
+            response = np.convolve(impulse, prf_kernel, mode='full')[:n_samples_stim]
+            stim_data = trial_baseline + response
+            stim_data += np.random.normal(0, 0.05, n_samples_stim)  # Add noise to stimulus period
+            
+            # Combine baseline and stimulus data
+            pupil = np.concatenate([baseline_data, stim_data])
+            time = np.arange(len(pupil))
+            event = ['fixation']*n_samples_baseline + ['stimulus']*n_samples_stim
             
             # Add random blinks
             if np.random.random() < 0.3:
-                blink_start = np.random.randint(0, n_samples - 200)
+                blink_start = np.random.randint(0, len(pupil) - 200)
                 blink_duration = np.random.randint(100, 200)
                 blink_idx = np.arange(blink_start, blink_start + blink_duration)
-                blink_idx = blink_idx[blink_idx < n_samples]
-                pupil[blink_idx] = np.nan
+                blink_idx = blink_idx[blink_idx < len(pupil)]
+                pupil[blink_idx] = 0
             
             # Add gaze position with drift
-            drift_x = np.cumsum(np.random.normal(0, 0.01, n_samples))
-            drift_y = np.cumsum(np.random.normal(0, 0.01, n_samples))
-            x = np.random.normal(1920/2, 20, n_samples) + drift_x
-            y = np.random.normal(1080/2, 20, n_samples) + drift_y
+            drift_x = np.cumsum(np.random.normal(0, 0.01, len(pupil)))
+            drift_y = np.cumsum(np.random.normal(0, 0.01, len(pupil)))
+            x = np.random.normal(1920/2, 20, len(pupil)) + drift_x
+            y = np.random.normal(1080/2, 20, len(pupil)) + drift_y
             
             trial_data = pd.DataFrame({
                 'participant': participant_id,

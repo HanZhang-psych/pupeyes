@@ -30,7 +30,7 @@ default_mpl = {
     'font.weight': 'normal',
     # legend settings
     'legend.fontsize': 14,
-    'legend.loc': (1.01, 0.5),
+    'legend.loc': 'best',
     'legend.frameon': False,
     # grid settings
     'grid.linestyle': '-',
