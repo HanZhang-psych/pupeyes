@@ -20,7 +20,7 @@ build:
       - pip install joblib
       - pip install jupyter-book
       - pip install ipywidgets
-      #- pip install notebook
+      - pip install notebook
     pre_build:
       # Generate the Sphinx configuration for this Jupyter Book so it builds.
       - jupyter-book config sphinx docs/
