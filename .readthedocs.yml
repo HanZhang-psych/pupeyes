@@ -15,8 +15,8 @@ build:
     install:
       - pip cache purge
       # needed because of testPypi
-      - pip install -r docs/requirements.txt
-      - pip install -i https://test.pypi.org/simple/ pupeyes
+      #- pip install -r docs/requirements.txt
+      - pip install pupeyes
       - pip install mne 
       - pip install joblib
       - pip install jupyter-book
