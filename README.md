@@ -11,17 +11,29 @@
 
 PupEyes is a Python package for preprocessing and visualizing eye movement data. It handles pupil size preprocessing and supports interactive visualization of pupil size and fixation data. It was designed to streamline data preparation so you can analyze your data with ease and confidence.
 
-**Highlights**:
+## Higlights
 
-- **Best practices**: The pupil data preprocessing pipeline is desgined based on the best practices available.
-- **Pandas integration**: Raw data is cleaned and prepared as a `pandas` dataframe, allowing you to enjoy the vast data analysis and manipulation methods offered by the `pandas` ecosystem.
-- **Interactive interface**: Multiple interactive visualizations using `Plotly Dash` allow you understand your data better.
+### Best practices 
 
-Check out detailed documentation and tutorials here: https://pupeyes.readthedocs.io/.
+The pupil data preprocessing pipeline is desgined based on the best practices available.
 
-The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project (as is always the case). While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
+### Pandas integration
 
-I hope PupEyes will be useful to the eye-tracking community!
+Raw data is cleaned and prepared as a `pandas` dataframe, allowing you to enjoy the vast data analysis and manipulation methods offered by the `pandas` ecosystem.
+
+### Interactive interface
+
+Multiple interactive visualizations using `Plotly Dash` allow you understand your data better.
+
+**Pupil Viewer**: Examining Pupil Preprocessing Steps
+![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/pupil_viewer.gif)
+
+**Fixation Viewer**: Visualize Fixation Patterns
+![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/fixation_viewer.gif)
+
+**AOI Drawing Tool**: Flexibly Define AOIs
+![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/aoi_drawer.gif)
+
 
 ## Installation
 
@@ -73,3 +85,8 @@ If you use PupEyes in your research, please cite:
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a list of changes in each release.
+
+
+The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project (as is always the case). While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
+
+I hope PupEyes will be useful to the eye-tracking community!
