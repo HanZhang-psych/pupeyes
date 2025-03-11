@@ -26,12 +26,15 @@ Raw data is cleaned and prepared as a `pandas` dataframe, allowing you to enjoy 
 Multiple interactive visualizations using `Plotly Dash` allow you understand your data better.
 
 **Pupil Viewer**: Examining Pupil Preprocessing Steps
+
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/pupil_viewer.gif)
 
 **Fixation Viewer**: Visualize Fixation Patterns
+
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/fixation_viewer.gif)
 
 **AOI Drawing Tool**: Flexibly Define AOIs
+
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/aoi_drawer.gif)
 
 
