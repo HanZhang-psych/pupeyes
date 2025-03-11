@@ -65,6 +65,10 @@ conda install pupeyes
 
 Tutorials and API reference are available at [Read the Docs](https://pupeyes.readthedocs.io/).
 
+## Compatibility
+
+While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
+
 ## Contributing
 
 Please report bugs if you notice any. See the [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
@@ -93,6 +97,6 @@ See [CHANGELOG.md](CHANGELOG.md) for a list of changes in each release.
 
 
 ---------
-The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project (as is always the case). While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
+The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project (as is always the case).
 
 I hope PupEyes will be useful to the eye-tracking community!
