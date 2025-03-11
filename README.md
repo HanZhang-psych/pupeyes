@@ -13,6 +13,8 @@
 
 PupEyes is a Python package for preprocessing and visualizing eye movement data. It handles pupil size preprocessing and supports interactive visualization of pupil size and fixation data. It was designed to streamline data preparation so you can analyze your data with ease and confidence.
 
+[Tutorials and API Reference](https://pupeyes.readthedocs.io/)
+
 ## Higlights
 
 ### Best practices 
