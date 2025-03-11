@@ -92,6 +92,7 @@ If you use PupEyes in your research, please cite:
 See [CHANGELOG.md](CHANGELOG.md) for a list of changes in each release.
 
 
+---------
 The project began as an attempt to formalize the eye-tracking processing scripts used in my past research. It then evolved into a much bigger project (as is always the case). While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
 
 I hope PupEyes will be useful to the eye-tracking community!
