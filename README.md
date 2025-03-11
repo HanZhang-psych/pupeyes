@@ -7,7 +7,7 @@
 [![Github All Releases](https://img.shields.io/github/downloads/HanZhang-psych/pupeyes/total.svg)]()
 [![ReadtheDocs](https://readthedocs.org/projects/pupeyes/badge/?version=latest)]
 
-[![PupEyes](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/banner.jpg)](https://pupeyes.readthedocs.io/)
+[![PupEyes](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/banner.jpg)](https://pupeyes.readthedocs.io/){:target="_blank"}
 
 ## Overview
 
