@@ -157,15 +157,15 @@ class PupilViewer:
             # Create plot
             fig = self.pupil_processor._plot_trial_interactive(
                 trial=trial,
-                x=self.pupil_processor.time_col,
-                y=plot_columns,
+                time_col=self.pupil_processor.time_col,
+                pupil_col=plot_columns,
                 hue=self.hue,
                 plot_params=plot_params
             )
             
             return fig
             
-    def run_server(self, port=8051, **kwargs):
+    def run(self, port=8051, **kwargs):
         """
         Run the Dash server for the pupil data viewer.
         
@@ -185,4 +185,4 @@ class PupilViewer:
         - Each preprocessing step is shown in a separate subplot
         - Interactive controls allow exploration of different trials and columns
         """
-        self.app.run_server(port=port, **kwargs) 
+        self.app.run(port=port, **kwargs) 

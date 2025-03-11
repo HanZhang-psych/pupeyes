@@ -5,6 +5,8 @@
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](https://pupeyes.readthedocs.io/en/latest/intro.html)
 [![GitHub issues](https://img.shields.io/github/issues/HanZhang-psych/pupeyes/issues)](https://github.com/HanZhang-psych/pupeyes/issues)
 [![Github All Releases](https://img.shields.io/github/downloads/HanZhang-psych/pupeyes/total.svg)]()
+[![ReadtheDocs](https://readthedocs.org/projects/pupeyes/badge/?version=latest)]
+
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/banner.jpg)
 
 ## Overview
@@ -42,23 +44,8 @@ Multiple interactive visualizations using `Plotly Dash` allow you understand you
 
 ## Installation
 
-### Install via `pip`
 ```bash
 pip install pupeyes
-```
-
-### Install via `conda`
-It's recommended to install PupEyes in a new virtual environment to avoid any potential conflicts with other packages. If you use Anaconda, you can follow these steps:
-
-```bash
-conda create -n pupeyes-env python=3.12
-conda activate pupeyes-env
-```
-
-This will create a new conda environment called pupeyes-env and activates it. Now, you can install PupEyes:
-
-```bash
-conda install pupeyes
 ```
 
 ## Documentation
