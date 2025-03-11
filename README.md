@@ -29,9 +29,11 @@ Multiple interactive visualizations using `Plotly Dash` allow you understand you
 
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/pupil_viewer.gif)
 
+
 **Fixation Viewer**: Visualize Fixation Patterns
 
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/fixation_viewer.gif)
+
 
 **AOI Drawing Tool**: Flexibly Define AOIs
 
