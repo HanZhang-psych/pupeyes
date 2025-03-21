@@ -995,6 +995,9 @@ class PupilProcessor:
         if df_summary['baseline_outlier'].any():
             print(f"\n {df_summary.query('baseline_outlier==True')[self.trial_identifier]}")
 
+        # fill na with False
+        df_summary['baseline_outlier'] = df_summary['baseline_outlier'].fillna(False)
+
         # update summary data
         self.summary_data = df_summary
 
@@ -1117,6 +1120,9 @@ class PupilProcessor:
         if len(outlier_trials) > 0:
             print(f"\n {len(outlier_trials)} trials detected as outliers:")
             print(f"\n {pd.DataFrame(outlier_trials)}")
+
+        # fill na with False
+        df_summary['trace_outlier'] = df_summary['trace_outlier'].fillna(False)
 
         # update summary data and steps
         self.summary_data = df_summary
