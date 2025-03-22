@@ -13,3 +13,8 @@
 - Added plot_gaze_surface() to check gaze position.
 - Improved summary stats for filter_position().
 - Updated docs to demonstrate plot_gaze_surface()
+
+## v0.2.1 (3/22/2025)
+
+- A better fix for how NA is handled in check_baseline_outliers()
+- Added save option for plot_gaze_surface()
