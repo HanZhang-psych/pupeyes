@@ -1228,8 +1228,8 @@ class PupilProcessor:
         """
         Create an interactive surface plot of pupil dilation by gaze coordinates using numpy.histogram2d.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         data : pandas.DataFrame, optional
             DataFrame containing pupil size, x-coordinates, and y-coordinates.
             Being able to specify data is useful for plotting a subset of the data. See examples below.
