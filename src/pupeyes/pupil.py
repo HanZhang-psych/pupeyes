@@ -977,9 +977,14 @@ class PupilProcessor:
             lower = median_baseline - n_mad_baseline*mad
             
             # mark outliers
-            df_summary['baseline_outlier'] = (df_summary['baseline'] > upper) | (df_summary['baseline'] < lower)
+            is_outlier = (df_summary['baseline'] > upper) | (df_summary['baseline'] < lower)
+            # fill na with False
+            is_outlier = is_outlier.fillna(False)
+            # update summary data
+            df_summary['baseline_outlier'] = is_outlier
             df_summary['baseline_upper'] = upper
             df_summary['baseline_lower'] = lower
+        
         else:
             # calculate thresholds for each group
             for group, groupdata in tqdm(df_summary.groupby(outlier_by, sort=False), desc='Checking baseline pupil sizes for outliers', disable=not self.progress_bar):
@@ -991,7 +996,11 @@ class PupilProcessor:
                 
                 # mark outliers for this group
                 group_indices = groupdata.index
-                df_summary.loc[group_indices, 'baseline_outlier'] = (groupdata['baseline'] > upper) | (groupdata['baseline'] < lower)
+                is_outlier = (groupdata['baseline'] > upper) | (groupdata['baseline'] < lower)
+                # fill na with False
+                is_outlier = is_outlier.fillna(False)
+                # update summary data
+                df_summary.loc[group_indices, 'baseline_outlier'] = is_outlier
                 df_summary.loc[group_indices, 'baseline_upper'] = upper
                 df_summary.loc[group_indices, 'baseline_lower'] = lower
 
@@ -999,9 +1008,6 @@ class PupilProcessor:
         print(f"\n {df_summary['baseline_outlier'].sum()} trials detected as baseline outliers:")
         if df_summary['baseline_outlier'].any():
             print(f"\n {df_summary.query('baseline_outlier==True')[self.trial_identifier]}")
-
-        # fill na with False
-        df_summary['baseline_outlier'] = df_summary['baseline_outlier'].fillna(False)
 
         # update summary data
         self.summary_data = df_summary
@@ -1126,9 +1132,6 @@ class PupilProcessor:
             print(f"\n {len(outlier_trials)} trials detected as outliers:")
             print(f"\n {pd.DataFrame(outlier_trials)}")
 
-        # fill na with False
-        df_summary['trace_outlier'] = df_summary['trace_outlier'].fillna(False)
-
         # update summary data and steps
         self.summary_data = df_summary
         self.all_steps.append('Trace Outlier Detection')
@@ -1221,7 +1224,7 @@ class PupilProcessor:
 
         return self
 
-    def plot_pupil_surface(self, data=None, pupil_col=None, x_col=None, y_col=None, plot_type='count', vertices=None, nbins=64, log_counts=False, plot_by=None, show_centroid=True, plot_params=None):
+    def plot_pupil_surface(self, data=None, pupil_col=None, x_col=None, y_col=None, plot_type='count', vertices=None, nbins=64, log_counts=False, plot_by=None, show_centroid=True, save=None, plot_params=None):
         """
         Create an interactive surface plot of pupil dilation by gaze coordinates using numpy.histogram2d.
         
@@ -1247,6 +1250,8 @@ class PupilProcessor:
             Column name to group data by for separate subplots. Defaults to None.
         show_centroid : bool, default=True
             Whether to show the centroid of the data. Defaults to True.
+        save : str, optional
+            Path to save plot.
         plot_params : dict, optional
             Dictionary of plotting parameters to override defaults
             - x_title : str, default='Gaze X'
@@ -1452,6 +1457,13 @@ class PupilProcessor:
             )],
             margin=dict(l=80, r=80, t=100, b=80)
         )
+
+        # save figure if path is provided
+        if save:
+            if save.endswith('.html'):
+                fig.write_html(save)
+            else:
+                raise ValueError(f"Interactive plots must be saved as html file. Got {save}.")
 
         return fig
 
@@ -2254,9 +2266,11 @@ class PupilProcessor:
             'xanchor': 'right',
             'yanchor': 'top'
         }]
+        ply_kwargs['yaxis_range'] = [0, max_y]
         ply_kwargs['barmode'] = 'overlay'
         ply_kwargs.update({k:v for k,v in plot_params.items() if k not in plot_specific_settings})
         
+        # update layout
         fig.update_layout(**ply_kwargs)
 
         # Save if requested
@@ -2497,7 +2511,10 @@ class PupilProcessor:
 
         # Save figure if path is provided
         if save:
-            fig.write_html(save)
+            if save.endswith('.html'):
+                fig.write_html(save)
+            else:
+                raise ValueError(f"Interactive plots must be saved as html file. Got {save}.")
 
         # return figure if requested
         if return_fig:

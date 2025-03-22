@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pupeyes"
-version = "0.2.0"
+version = "0.2.1"
 description = "PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis"
 authors = ["Han Zhang"]
 license = "GNU General Public License v3.0"
