@@ -50,6 +50,11 @@ Multiple interactive visualizations using `Plotly Dash` allow you understand you
 pip install pupeyes
 ```
 
+or install the latest development version from Github
+
+```bash
+pip install git+https://github.com/HanZhang-psych/pupeyes.git
+```
 ## Documentation
 
 Tutorials and API reference are available at [Read the Docs](https://pupeyes.readthedocs.io/).
