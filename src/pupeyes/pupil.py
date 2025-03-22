@@ -405,8 +405,10 @@ class PupilProcessor:
         Notes
         -----
         - Updates summary_data with:
-            - run_position: Boolean indicating if position filtering was performed
-            - pct_position: Percentage of samples outside the polygon
+            - run_gaze_filter: Boolean indicating if gaze filtering was performed
+            - pct_gaze_filter: Percentage of samples outside the polygon
+            - avg_gaze_x: Average gaze x-coordinate for the remaining samples
+            - avg_gaze_y: Average gaze y-coordinate for the remaining samples
         - Creates a new column with suffix appended to the current pupil column name
         - Updates all_pupil_cols and all_steps to track processing history
         - Samples outside the polygon are replaced with NaN values
@@ -435,8 +437,8 @@ class PupilProcessor:
         self.data[new_col] = self.data[pupil_col]
 
         # initialize position removed column in summary data
-        self.summary_data['run_position'] = False
-        self.summary_data['pct_position'] = pd.NA
+        self.summary_data['run_gaze_filter'] = False
+        self.summary_data['pct_gaze_filter'] = pd.NA
 
         # iterate over trials if trial_identifier is provided
         empty_trials = []
@@ -452,14 +454,17 @@ class PupilProcessor:
                 inside_mask = is_inside(gaze_pos, vertices)
                 # set pupil size to NaN if gaze position is outside the specified region
                 self.data.loc[groupdata.index[~inside_mask], new_col] = pd.NA
-
-                # update summary data
-                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_position'] = True
-                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'pct_position'] = 1 - (inside_mask.sum()/len(inside_mask))
+                groupdata.loc[groupdata.index[~inside_mask], new_col] = pd.NA
                 
+                # update summary data
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_gaze_filter'] = True
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'pct_gaze_filter'] = 1 - (inside_mask.sum()/len(inside_mask))
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'avg_gaze_x'] = np.nanmean(groupdata.loc[groupdata[new_col].notna(), x_col])
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'avg_gaze_y'] = np.nanmean(groupdata.loc[groupdata[new_col].notna(), y_col])
+        
         # update latest pupil column
         self.all_pupil_cols.append(new_col)
-        self.all_steps.append('Position Filtered')
+        self.all_steps.append('Gaze Filtered')
 
         # print empty trials
         if len(empty_trials) > 0:
@@ -1215,6 +1220,240 @@ class PupilProcessor:
         self.data['valid'] = data_mask
 
         return self
+
+    def plot_pupil_surface(self, data=None, pupil_col=None, x_col=None, y_col=None, plot_type='count', vertices=None, nbins=64, log_counts=False, plot_by=None, show_centroid=True, plot_params=None):
+        """
+        Create an interactive surface plot of pupil dilation by gaze coordinates using numpy.histogram2d.
+        
+        Parameters:
+        -----------
+        data : pandas.DataFrame, optional
+            DataFrame containing pupil size, x-coordinates, and y-coordinates.
+            Being able to specify data is useful for plotting a subset of the data. See examples below.
+            If None, uses self.data.
+        pupil_col : str, optional
+            Column name for pupil size. Defaults to self.all_pupil_cols[-1].
+        x_col : str, optional
+            Column name for x-coordinates of gaze. Defaults to self.x_col.
+        y_col : str, optional
+            Column name for y-coordinates of gaze. Defaults to self.y_col.
+        plot_type : str, optional
+            'count' for number of measurements or 'size' for mean pupil size. Defaults to 'count'.
+        nbins : int, optional
+            Number of bins for the 2D histogram. Defaults to 64.
+        log_counts : bool, default=False
+            Whether to apply log transformation to counts (only applies when plot_type='count'). Defaults to False.
+        plot_by : str, optional
+            Column name to group data by for separate subplots. Defaults to None.
+        show_centroid : bool, default=True
+            Whether to show the centroid of the data. Defaults to True.
+        plot_params : dict, optional
+            Dictionary of plotting parameters to override defaults
+            - x_title : str, default='Gaze X'
+            - y_title : str, default='Gaze Y'
+            - title : str, default='Pupil Foreshortening Error Surface'
+            - palette : str, default='Viridis'
+            - width : int, default=400
+            - height : int, default=300
+
+        Examples
+        --------
+        >>> # Plot a 2d histogram of the number of pupil measurements by condition
+        >>> p.plot_pupil_surface(plot_by='condition')
+        >>> # Plot a 2d histogram of the mean pupil size based on custom data
+        >>> p.plot_pupil_surface(data=p.data[p.data['event'] == 'event_name'])
+        >>> # Plot the mean pupil size rather than the count of measurements as a function of gaze coordinates 
+        >>> p.plot_pupil_surface(plot_type='size')
+        """
+        # plot params
+        if plot_params is None:
+            plot_params = {}
+
+        # get data
+        if data is None:
+            data = self.data.copy()
+
+        # get column names
+        if x_col is None:
+            x_col = self.x_col
+        if y_col is None:
+            y_col = self.y_col
+        if pupil_col is None:
+            pupil_col = self.all_pupil_cols[-1]
+
+        # drop nans
+        data = data[data[x_col].notna() & data[y_col].notna() & data[pupil_col].notna()].reset_index(drop=True)
+
+        # get x and y
+        x = data[x_col]
+        y = data[y_col]
+        
+        # Create groupby object
+        if plot_by is not None:
+            # Convert plot_by to list if it's not already
+            if isinstance(plot_by, str):
+                plot_by = [plot_by]
+            grouped = data.groupby(plot_by, sort=False)
+        else:
+            grouped = [(None, data)]
+
+        # Create figure
+        fig = go.Figure()
+
+        # Initialize lists to store all data for common color scale
+        all_counts = []
+        all_pupil_means = []
+        
+        # Process each group
+        for _, group_data in grouped:
+            group_x = group_data[x_col]
+            group_y = group_data[y_col]
+            group_pupil = group_data[pupil_col]
+            
+            # Compute histograms for this group
+            counts, xedges, yedges = np.histogram2d(group_x, group_y, bins=nbins, range=[[x.min(), x.max()], [y.min(), y.max()]])
+            pupil_sum, _, _ = np.histogram2d(group_x, group_y, bins=[xedges, yedges], weights=group_pupil)
+            pupil_mean = pupil_sum / np.maximum(counts, 1)
+
+            all_counts.append(counts)
+            all_pupil_means.append(pupil_mean)
+
+        # Calculate global min/max for common color scale
+        if plot_type == 'count':
+            global_min = np.min([np.min(c) for c in all_counts])
+            global_max = np.max([np.max(c) for c in all_counts])
+            if log_counts:
+                global_min = np.log1p(global_min)
+                global_max = np.log1p(global_max)
+        else:
+            global_min = np.min([np.min(pm) for pm in all_pupil_means])
+            global_max = np.max([np.max(pm) for pm in all_pupil_means])
+
+        # Create a list to store visibility settings for each trace
+        all_traces = []
+        visible_settings = []
+        dropdown_options = []
+
+        # Plot each group
+        for i, (group_name, group_data) in enumerate(grouped):
+            traces_in_group = []
+            
+            # Format dropdown label
+            if group_name is not None:
+                # Convert group_name to list if it's not already
+                if not isinstance(group_name, tuple):
+                    group_name = (group_name,)
+                # Format each value with leading zeros if numeric
+                label_parts = [f"{val:03d}" if isinstance(val, (int, float)) else str(val) for val in group_name]
+                label = " | ".join(label_parts)
+            else:
+                label = "All"
+
+            # Add dropdown option
+            dropdown_options.append({
+                'label': label,
+                'method': "update",
+                'args': [{"visible": []}, {}]  # Will be filled later
+            })
+
+            # get colorscale data
+            if plot_type == 'count':
+                colorscale_data = all_counts[i].T
+                if log_counts:
+                    colorscale_data = np.log1p(colorscale_data)
+                colorbar_title = 'Log Count' if log_counts else 'Count'
+            else:
+                colorscale_data = all_pupil_means[i].T
+                colorbar_title = "Mean Size"
+
+            # Add heatmap trace
+            heatmap = go.Heatmap(
+                x=(xedges[:-1] + xedges[1:]) / 2,
+                y=(yedges[:-1] + yedges[1:]) / 2,
+                z=colorscale_data,
+                colorbar=dict(title=colorbar_title),
+                colorscale=plot_params.get('palette', 'Viridis'),
+                hoverongaps=False,
+                hoverinfo='x+y+z',
+                visible=(i == 0),  # Only first group visible initially
+                zmin=global_min,
+                zmax=global_max
+            )
+            fig.add_trace(heatmap)
+            traces_in_group.append(heatmap)
+            
+            # Add vertices if provided
+            if vertices is not None:
+                vertices = np.array(vertices)
+                aoi = go.Scatter(
+                    x=vertices[:,0],
+                    y=vertices[:,1],
+                    line=dict(color='black', width=2),
+                    name='Custom region',
+                    mode='lines',
+                    showlegend=False,
+                    visible=(i == 0)  # Only first group visible initially
+                )
+                fig.add_trace(aoi)
+                traces_in_group.append(aoi)
+
+            # Add centroid
+            if show_centroid:
+                centroid = np.array([group_data[x_col].mean(), group_data[y_col].mean()])
+                centroid_trace = go.Scatter(
+                    x=[centroid[0]],
+                    y=[centroid[1]],
+                    mode='markers',
+                    marker=dict(color='red', size=10, symbol='x'),
+                    showlegend=False,
+                    hoverinfo='x+y+name',
+                    name='Average Gaze',
+                    visible=(i == 0)  # Only first group visible initially
+                )
+                fig.add_trace(centroid_trace)
+                traces_in_group.append(centroid_trace)
+
+            all_traces.append(traces_in_group)
+
+        # Create visibility settings for each dropdown option
+        for i in range(len(all_traces)):
+            vis = []
+            for j, traces in enumerate(all_traces):
+                vis.extend([True if j == i else False] * len(traces))
+            visible_settings.append(vis)
+            
+            # Update the args for each dropdown option
+            dropdown_options[i]['args'][0]["visible"] = vis
+
+        # Update layout
+        fig.update_layout(
+            title=dict(
+                text=plot_params.get('title', 'Pupil Foreshortening Error Surface'),
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(size=20, family='Arial', weight='bold')
+            ),
+            xaxis_title='Gaze X',
+            yaxis_title='Gaze Y',
+            yaxis_range=[y.max(), y.min()-1], # invert y axis
+            xaxis_range=[x.min()-1, x.max()],
+            width=plot_params.get('width', 800),
+            height=plot_params.get('height', 600),
+            updatemenus=[dict(
+                type="dropdown",
+                direction="down",
+                x=1.0,  # Position the dropdown at the right
+                y=1.1,  # Position slightly above the plot
+                showactive=True,
+                active=0,  # Show first group by default
+                buttons=dropdown_options
+            )],
+            margin=dict(l=80, r=80, t=100, b=80)
+        )
+
+        return fig
 
     def _get_plot_settings(self, x, y, plot_params=None, is_interactive=True):
         """
