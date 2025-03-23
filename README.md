@@ -2,10 +2,10 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
-[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](https://pupeyes.readthedocs.io/en/latest/intro.html)
-[![GitHub issues](https://img.shields.io/github/issues/HanZhang-psych/pupeyes/issues)](https://github.com/HanZhang-psych/pupeyes/issues)
+[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](https://pupeyes.readthedocs.io/en/latest/index.html)
+[![GitHub issues](https://img.shields.io/github/issues/HanZhang-psych/pupeyes)](https://github.com/HanZhang-psych/pupeyes/issues)
 [![Github All Releases](https://img.shields.io/github/downloads/HanZhang-psych/pupeyes/total.svg)]()
-![ReadtheDocs](https://readthedocs.org/projects/pupeyes/badge/?version=latest)
+[![ReadtheDocs](https://readthedocs.org/projects/pupeyes/badge/?version=latest)](https://pupeyes.readthedocs.io/en/latest/index.html)
 
 [![PupEyes](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/banner.jpg)](https://pupeyes.readthedocs.io/)
 
