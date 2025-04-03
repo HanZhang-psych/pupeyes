@@ -18,3 +18,7 @@
 
 - A better fix for how NA is handled in check_baseline_outliers()
 - Added save option for plot_gaze_surface()
+
+## v0.2.2 (4/3/2025)
+
+- Added ipywidgets as dependency
