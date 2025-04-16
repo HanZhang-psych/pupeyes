@@ -15,6 +15,8 @@ PupEyes is a Python package for preprocessing and visualizing eye movement data.
 
 [Tutorials and API Reference](https://pupeyes.readthedocs.io/)
 
+[Preprint](https://osf.io/preprints/psyarxiv/h95ma_v1) 
+
 ## Higlights
 
 ### Best practices 
@@ -73,15 +75,18 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Citation
 
-If you use PupEyes in your research, please cite:
+If you use PupEyes in your research, please cite our [preprint](https://osf.io/preprints/psyarxiv/h95ma_v1) 
 
 ```bibtex
-@software{pupeyes2025,
-  author = {Zhang, Han},
-  title = {PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis},
-  year = {2025},
-  publisher = {GitHub},
-  url = {https://github.com/HanZhang-psych/pupeyes}
+@misc{zhang_pupeyes_2025,
+	title = {{PupEyes}: An Interactive Python Library for Pupil Size and Eye Movement Data Processing},
+	url = {https://osf.io/h95ma_v1},
+	doi = {10.31234/osf.io/h95ma_v1},
+	shorttitle = {{PupEyes}},
+	publisher = {{OSF}},
+	author = {Zhang, Han and Jonides, John},
+	urldate = {2025-04-16},
+	date = {2025-04-07}
 }
 ```
 
