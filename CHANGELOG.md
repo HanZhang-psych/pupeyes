@@ -22,3 +22,13 @@
 ## v0.2.2 (4/3/2025)
 
 - Added ipywidgets as dependency
+
+## v0.3.0 (8/5/2025)
+
+- Added Tobii data support with TobiiTittaReader for hdf5 format data
+- Added h5py as dependency for Tobii data file handling
+- Restructured documentation to include dedicated Tobii data sections
+- Enhanced pupil processing functionalities with improved missing value handling
+- Updated API reference to include Tobii data support
+- Removed deprecated read_data notebook and replaced with device-specific notebooks
+- Minor changes to tutorials
