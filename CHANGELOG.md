@@ -26,9 +26,13 @@
 ## v0.3.0 (8/5/2025)
 
 - Added Tobii data support with TobiiTittaReader for hdf5 format data
+- Added upsample and downsample functions to pupil preprocessing pipeline
+- Refactored sampling frequency check to handle non-Eyelink trackers
+- More friendly messages for new column names during pupil preprocessing
+- Add warning for non-integer timestamp columns for PupilProcessor
+- Add support for specifying different missing pupil values during initialization
 - Added h5py as dependency for Tobii data file handling
 - Restructured documentation to include dedicated Tobii data sections
-- Enhanced pupil processing functionalities with improved missing value handling
 - Updated API reference to include Tobii data support
 - Removed deprecated read_data notebook and replaced with device-specific notebooks
 - Minor changes to tutorials
