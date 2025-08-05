@@ -23,7 +23,7 @@
 
 - Added ipywidgets as dependency
 
-## v0.3.0 (8/5/2025)
+## v0.3.1 (8/5/2025)
 
 - Added Tobii data support with TobiiTittaReader for hdf5 format data
 - Added upsample and downsample functions to pupil preprocessing pipeline
@@ -31,8 +31,9 @@
 - More friendly messages for new column names during pupil preprocessing
 - Add warning for non-integer timestamp columns for PupilProcessor
 - Add support for specifying different missing pupil values during initialization
-- Added h5py as dependency for Tobii data file handling
+- Added h5py and tables as dependency for Tobii data file handling
 - Restructured documentation to include dedicated Tobii data sections
 - Updated API reference to include Tobii data support
 - Removed deprecated read_data notebook and replaced with device-specific notebooks
 - Minor changes to tutorials
+
