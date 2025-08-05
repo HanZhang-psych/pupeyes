@@ -3,10 +3,18 @@ API Reference
 
 This page contains the API reference for the ``pupeyes`` package.
 
-Reading Data
+Reading Eyelink Data
 ----------------------------
 
-.. automodule:: pupeyes.data
+.. automodule:: pupeyes.data.eyelink
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Reading Tobii Data (from Titta)
+--------------------------------
+
+.. automodule:: pupeyes.data.tobii_titta
    :members:
    :undoc-members:
    :show-inheritance:

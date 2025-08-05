@@ -24,11 +24,9 @@ __maintainer__ = "Han Zhang"
 __email__ = "hanzh@umich.edu"
 __status__ = "Adapted"
 
-import copy
 import os.path
 import numpy
-from tqdm.notebook import tqdm
-import re
+from tqdm.auto import tqdm
 
 def replace_missing(value, missing=0.0):
 	"""

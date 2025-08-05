@@ -1,6 +1,6 @@
 # PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis
 
-PupEyes is a Python package for preprocessing and visualizing eye movement data. It handles pupil size preprocessing and supports interactive visualization of pupil size and fixation data. It was designed to streamline data preparation so you can analyze your data with ease and confidence.
+PupEyes is a Python package for preprocessing and visualizing eye movement data. It handles pupil size preprocessing and supports interactive visualization of pupil size and fixation data. It supports both Eyelink and Tobii data as well as any generic eye-tracking dataset that conforms to minimal formatting requirements. 
 
 ## Installation
 
@@ -43,8 +43,11 @@ Multiple interactive visualizations using `Plotly Dash` allow you understand you
 ![](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/docs/assets/aoi_drawer.gif)
 
 
-Check out the tutorials here:
-
+## Tutorials
 
 ```{tableofcontents}
 ```
+## Issues?
+
+If you encounter a problem while running the code, or have suggestions for improvement, please [submit an issue here](https://github.com/HanZhang-psych/pupeyes/issues).
+

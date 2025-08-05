@@ -4,9 +4,13 @@
 format: jb-book
 root: index
 chapters:
-  - file: read_data
+  - file: read_data_eyelink
   - file: pupil_preproc
   - file: pupil_stats
   - file: fixation_viewer
   - file: aoi_analysis
+  - file: tobii_data
+    sections:
+      - file: read_data_tobii_titta
+      - file: read_data_tobii_prolab
   - file: api

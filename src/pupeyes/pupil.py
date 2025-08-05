@@ -1,15 +1,15 @@
 # -*- coding:utf-8 -*-
 
 """
-Eyelink Pupil Data Processing Module
+Pupil Data Processing Module
 
-This module provides tools for processing pupillometry data from Eyelink eye trackers.
+This module provides tools for processing pupillometry data from eye trackers.
 It includes functionality for deblinking, smoothing, baseline correction, and plotting
 pupil size data.
 """
 
 import warnings
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 import os
@@ -21,12 +21,10 @@ from .external.based_noise_blinks_detection import based_noise_blinks_detection
 # plotting
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.backends.backend_pdf
 import seaborn as sns
 import plotly
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import plotly.express as px
 from .defaults import default_mpl, default_plotly
 
 class PupilProcessor:
@@ -47,7 +45,7 @@ class PupilProcessor:
     pupil_col : str
         Column name containing pupil size measurements
     time_col : str
-        Column name containing timestamps
+        Column name containing timestamps. Must be in milliseconds and integer.
     x_col : str
         Column name containing x-coordinates of gaze position
     y_col : str
@@ -62,6 +60,8 @@ class PupilProcessor:
         Artificial pupil size in arbitrary units, used for pupil size conversion
     recording_unit : {'diameter', 'area'}, default='diameter'
         Unit of the recorded pupil size
+    device : {'eyelink', 'tobii_titta', 'tobii_prolab','smi'}, default='eyelink'
+        Device type. At the moment, this only controls whether sampling frequency is checked.
     progress_bar : bool, default=True
         Whether to show a progress bar for preprocessing steps
     
@@ -90,7 +90,7 @@ class PupilProcessor:
     - artificial_size was measured for the setup of our research group and may not generalize to other setups.
     """
 
-    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter', progress_bar=True):
+    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter', progress_bar=True, device='eyelink', eyetracker_missing_value=0):
         """
         Initialize PupilData object.
 
@@ -103,7 +103,7 @@ class PupilProcessor:
         pupil_col : str
             Column name for pupil size
         time_col : str
-            Column name for time
+            Column name for time. Must be in milliseconds and integer.
         x_col : str
             Column name for x gaze position
         y_col : str
@@ -120,7 +120,15 @@ class PupilProcessor:
             Unit of the recorded pupil size
         progress_bar : bool, default=True
             Whether to show a progress bar for preprocessing steps
+        device : {'eyelink', 'tobii_titta', 'tobii_prolab','smi'}, default='eyelink'
+            Device type. At the moment, this only controls whether sampling frequency is checked.
+        eyetracker_missing_value : int, default=0
+            Value for missing pupil size for the eye tracker. Different eye trackers use different values to indicate missing values. PupEyes will replace these values with 0.
+            Other possible values are pd.NA, np.nan, -1, -999, etc.
         """
+        # device
+        self.device = device
+        print(f'Device: {self.device}')
         # make a copy of the data
         self.data = data.copy() 
         # group by column for preprocessing
@@ -128,10 +136,42 @@ class PupilProcessor:
             self.trial_identifier = [trial_identifier]
         else:
             self.trial_identifier = trial_identifier
+        # missing value for the eye tracker
+        self.eyetracker_missing_value = eyetracker_missing_value
         # column name for pupil size
         self.pupil_col = pupil_col 
+
+        # replace eye-tracker specified missing values with 0
+        # check if the missing value exists in the data
+        if pd.isna(self.eyetracker_missing_value):
+            # handle pd.NA or np.nan
+            if self.data[self.pupil_col].isna().any():
+                print(f'Eye-tracker missing value is {self.eyetracker_missing_value}. Replacing with 0.')
+                # convert to numeric to handle mixed types, then replace NA values
+                self.data[self.pupil_col] = pd.to_numeric(self.data[self.pupil_col], errors='coerce').fillna(0)
+        else:
+            # handle specific numeric values
+            if (self.data[self.pupil_col] == self.eyetracker_missing_value).any():
+                if self.eyetracker_missing_value == 0:
+                    print(f'Eye-tracker missing value for pupil size is 0. No replacement needed.')
+                else:
+                    print(f'Eye-tracker missing value is {self.eyetracker_missing_value}. Replacing with 0.')
+                    self.data[self.pupil_col] = self.data[self.pupil_col].replace({self.eyetracker_missing_value: 0})
+
         # column name for time
         self.time_col = time_col 
+        
+        # check for non-integer timestamps and warn
+        time_values = self.data[time_col].dropna()
+        if not all(isinstance(val, (int, np.integer)) for val in time_values):
+            import warnings
+            warnings.warn(
+                f"Non-integer timestamps detected in column '{time_col}'. "
+                "The preprocessing pipeline expects integer timestamps in milliseconds. "
+                "Decimal timestamps may cause issues in some preprocessing steps.",
+                UserWarning
+            )
+        
         # column name for x gaze position
         self.x_col = x_col 
         # column name for y gaze position
@@ -153,15 +193,8 @@ class PupilProcessor:
         self.trace_outlier_by = None
         # progress bar
         self.progress_bar = progress_bar
-        # check if the difference between consecutive samples is equal to a fixed value
-        diff = self.data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
-        if len(diff) == 1:
-            if 1000/diff[0] != self.samp_freq:
-                raise ValueError(f'Actual sampling frequency {1000/diff[0]}Hz does not match the provided sampling frequency {self.samp_freq}Hz')
-            else:
-                print('Sampling frequency check passed.')
-        else:
-            raise ValueError('Sampling frequency is not consistent')
+        # check sampling frequency
+        self.check_sampling_frequency()
 
         # convert pupil size
         if convert_pupil_size:
@@ -179,6 +212,45 @@ class PupilProcessor:
         print(f'Pupil column: {self.pupil_col}, Time column: {self.time_col}, X column: {self.x_col}, Y column: {self.y_col}')
         print(f'Trial identifier: {self.trial_identifier}, Number of trials: {len(self.trials)}')
 
+    def check_sampling_frequency(self, sampling_rate=None, data=None):
+        """
+        Check if the sampling frequency is consistent. Only performed for Eyelink data.
+
+        This method checks if the sampling frequency is consistent across trials.
+        If not, it raises an error. It is automatically called when initializing the PupilProcessor.
+        If resampling is performed, the sampling frequency is checked again.
+        
+        Parameters
+        ----------
+        sampling_rate : int, default=None
+            Sampling rate to check. If None, the sampling rate is checked against the current sampling rate.
+        data : pd.DataFrame, default=None
+            Data to check. If None, the data is checked against the current data. The time column must be in milliseconds and integer.
+
+        Returns
+        -------
+        check_pass : bool
+            True if the sampling frequency is consistent, False otherwise
+        """
+        if self.device not in ['eyelink']:
+            print(f'Sampling frequency check skipped for {self.device} data.')
+            return True
+        
+        data = self.data if data is None else data
+        sampling_rate = self.samp_freq if sampling_rate is None else sampling_rate
+        check_pass = False
+        # check if the difference between consecutive samples is equal to a fixed value
+        diff = data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
+        if len(diff) == 1:
+            if 1000/diff[0] != sampling_rate:
+                raise ValueError(f'Actual sampling frequency {1000/diff[0]}Hz does not match the provided sampling frequency {sampling_rate}Hz!')
+            else:
+                print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
+                check_pass = True
+        else:
+            raise ValueError('Sampling frequency is not consistent!')
+        
+        return check_pass
 
     def deblink(self, suffix='_db'):
         """
@@ -225,6 +297,8 @@ class PupilProcessor:
 
         # get sampling frequency
         samp_freq = self.samp_freq
+        
+        print(f'Running deblink using sampling frequency {samp_freq}Hz')
 
         # initialize blinks removed column in summary data
         self.summary_data['run_deblink'] = False
@@ -245,7 +319,7 @@ class PupilProcessor:
                     self.data.loc[groupdata.index[int(onset):int(offset)], new_col] = pd.NA
 
                 # update summary data
-                nblink = len(blinks["blink_onset"])
+                #nblink = len(blinks["blink_onset"])
                 nblinksamps = int(np.sum(np.array(blinks["blink_offset"]) - np.array(blinks["blink_onset"])))
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_deblink'] = True
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'pct_deblink'] = nblinksamps/len(groupdata)
@@ -257,10 +331,15 @@ class PupilProcessor:
         self.all_pupil_cols.append(new_col)
         self.all_steps.append('Deblinked')
 
+        # print summary
+        print(f"✓ Deblinking completed!")
+        print(f"  → New column: '{new_col}' (blinks removed)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(empty_trials)} trial(s) failed.")
+
         # print empty trials
         if len(empty_trials) > 0:
             # print a list of trials with high missing values
-            print(f"\n {len(empty_trials)} trials not deblinked due to missing pupil data:")
             print(f"\n {pd.DataFrame(empty_trials, columns=self.trial_identifier)}")
 
         return self
@@ -371,10 +450,15 @@ class PupilProcessor:
         self.all_pupil_cols.append(new_col)
         self.all_steps.append('Artifact Rejected')
 
+        # print summary
+        print(f"✓ Artifact rejection completed!")
+        print(f"  → New column: '{new_col}' (artifacts removed)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(empty_trials)} trial(s) failed.")
+
         # print empty trials
         if len(empty_trials) > 0:
             # print a list of trials with high missing values
-            print(f"\n {len(empty_trials)} trials not artifact rejected due to missing pupil data:")
             print(f"\n {pd.DataFrame(empty_trials, columns=self.trial_identifier)}")
 
         return self
@@ -465,6 +549,12 @@ class PupilProcessor:
         # update latest pupil column
         self.all_pupil_cols.append(new_col)
         self.all_steps.append('Gaze Filtered')
+
+        # print summary
+        print(f"✓ Gaze spatial filtering completed!")
+        print(f"  → New column: '{new_col}' (gaze filtered)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(empty_trials)} trial(s) failed.")
 
         # print empty trials
         if len(empty_trials) > 0:
@@ -575,10 +665,15 @@ class PupilProcessor:
         self.all_pupil_cols.append(new_col)
         self.all_steps.append('Smoothed')
 
+        # print summary
+        print(f"✓ Smoothing completed!")
+        print(f"  → New column: '{new_col}' (smoothed)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(empty_trials)} trial(s) failed.")
+
         # print empty trials
         if len(empty_trials) > 0:
             # print a list of trials with high missing values
-            print(f"\n {len(empty_trials)} trials not smoothed due to missing pupil data:")
             print(f"\n {pd.DataFrame(empty_trials, columns=self.trial_identifier)}")
 
         return self
@@ -644,10 +739,13 @@ class PupilProcessor:
             
         # update latest step
         self.all_steps.append('Missing Values Checked')
+
+        # print summary
+        print(f"✓ Missing values checked!")
+        print(f"  → {len(skip_trials)} trial(s) failed.")
         
         # print failed trials
         if len(skip_trials) > 0:
-            print(f"\n {len(skip_trials)} trials not checked due to missing data:")
             print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
 
         return self
@@ -734,26 +832,30 @@ class PupilProcessor:
         self.all_pupil_cols.append(new_col)
         self.all_steps.append('Interpolated')
 
+        # print summary
+        print(f"✓ Interpolation completed!")
+        print(f"  → New column: '{new_col}' (interpolated)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(skip_trials)} trial(s) failed.")
+
         if len(skip_trials) > 0:
             # print a list of trials with high missing values
-            print(f"\n {len(skip_trials)} trials not interpolated due to high missing values:")
             print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
 
         return self
 
-    def resample(self, bin_size_ms=10, agg_methods=None):
+    def downsample(self, target_samp_freq, agg_methods=None):
         """
-        Resample pupil data to a new sampling rate.
+        Downsample pupil data to a new sampling rate.
 
-        This method resamples the data by binning into fixed time windows and aggregating
+        This method downsamples the data by binning into fixed time windows and aggregating
         values within each bin. This is useful for reducing data size or matching sampling
         rates between different recordings.
 
         Parameters
         ----------
-        bin_size_ms : int, default=10
-            Size of time bins in milliseconds.
-            New sampling rate will be 1000/bin_size_ms Hz.
+        target_samp_freq : int
+            Target sampling frequency in Hz.
         agg_methods : dict, optional
             Dictionary mapping column names to aggregation methods.
             Example: {'pupil': 'mean', 'time': 'first', 'x': 'mean', 'y': 'mean'}
@@ -766,72 +868,233 @@ class PupilProcessor:
 
         Notes
         -----
-        - Updates data with resampled values
+        - Unlike other preprocessing functions, this function will replace the original .data with the downsampled data rather than creating a new column to the original .data. 
+        - Trials that cannot be downsampled are reported. 
+        - The sampling frequency is checked and updated again after downsampling. 
         - Updates summary_data with:
-            - run_resample: Boolean indicating if resampling was performed
+            - run_downsample: Boolean indicating if downsampling was performed
+            - downsampled_bin_size: Size of the downsampled time bin in milliseconds
+            - downsampled_samp_freq: Downsampled sampling frequency in Hz
         - Updates all_steps to track processing history
-        - Trials that cannot be resampled are reported
-        - Processing parameters are stored in self.params['resample']
-        - Original sampling rate is preserved in self.samp_freq
+        - Processing parameters are stored in self.params['downsample']
         """
         # store parameters
-        self.params['resample'] = {k: v for k, v in locals().items() if k != 'self'}
+        self.params['downsample'] = {k: v for k, v in locals().items() if k != 'self'}
+
+        # calculate new time step in milliseconds
+        bin_size_ms = 1000/target_samp_freq
 
         # get data
         data = self.data
-
-        # create new column for resampled data
         time_col = self.time_col
 
-        # aggregate methods for resampling
+        # aggregate methods for downsampling
         aggregation_methods = {col: 'first' for col in data.columns}
         if agg_methods is not None:
             aggregation_methods.update(agg_methods)
 
         # initialize summary data
-        self.summary_data['run_resample'] = False
+        self.summary_data['run_downsample'] = False
 
-        # group data once
+        # group data
         grouped = self.data.groupby(self.trial_identifier, sort=False)
 
         # precompute offsets for each group
         offsets = grouped[time_col].transform('min')
 
-        # normalize time and compute bins outside the loop
+        # normalize time and compute bins
+        # this ensures that the first sample in each trial is at time 0 and that the same bin size is used for all trials
         normalized_time = self.data[time_col] - offsets
         bins = normalized_time // bin_size_ms
 
         # iterate over trials and aggregate data
         skip_trials = []
-        all_resampled = []
-        for group, groupdata in tqdm(grouped, desc='Resampling', disable=not self.progress_bar):
+        all_downsampled = []
+
+        for group, groupdata in tqdm(grouped, desc='Downsampling', disable=not self.progress_bar):
             try:
                 # group by bins and aggregate data
                 groupdata = groupdata.groupby(bins, as_index=False).agg(aggregation_methods)
                 # update summary data
-                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_resample'] = True
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_downsample'] = True
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'downsampled_bin_size'] = bin_size_ms
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'downsampled_samp_freq'] = 1000/bin_size_ms
             except:
                 skip_trials.append(group)
 
-            # append resampled data
-            all_resampled.append(groupdata)
+            # append downsampled data
+            all_downsampled.append(groupdata)
+        
+        if all_downsampled:
+            # concatenate downsampled data
+            data = pd.concat(all_downsampled, ignore_index=True)
+            
+            # check sampling frequency, update samp_freq if pass
+            check_pass = self.check_sampling_frequency(sampling_rate=target_samp_freq, data=data)
+            if check_pass:
+                self.samp_freq = target_samp_freq
 
-        # concatenate resampled data
-        data = pd.concat(all_resampled, ignore_index=True)
+                # update data
+                self.data = data
 
-        # update data
-        self.data = data
+                # print summary
+                print(f"✓ Downsampling completed!")
+                print(f"  → New sampling frequency: {target_samp_freq} Hz")
+                print(f"  → {len(skip_trials)} trial(s) failed.")
 
-        # print failed trials
-        if len(skip_trials) > 0:
-            print(f"\n Failed to resample {len(skip_trials)} trials:")
-            print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
+                # print failed trials
+                if len(skip_trials) > 0:
+                    print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
 
-        # update latest step
-        self.all_steps.append('Resampled')
+                # update latest step
+                self.all_steps.append('Downsampled')
+        else:
+            raise ValueError('No trials were successfully downsampled!')
 
         return self
+
+    def upsample(self, target_samp_freq, fill_pupil=False):
+        """
+        Upsample pupil data to a higher sampling rate.
+
+        This method upsamples the data by inserting empty rows to meet the required sampling rate. 
+        Missing values are foward-filled for non-pupil columns. Pupil columns remain as NaN where no data exists unless fill_pupil=True.
+        A new column 'upsampled' is added to track the inserted rows.
+        Trials that cannot be upsampled are reported. The sampling frequency is checked and updated again after upsampling. 
+
+        Parameters
+        ----------
+        target_samp_freq : int
+            Target sampling frequency in Hz.
+            Must be higher than current sampling frequency.
+        fill_pupil : bool, default=False
+            Whether to also fill missing values in pupil columns.
+            If False, pupil columns remain as NaN where no data exists.
+            This is simply a forward-fill. If you want to interpolate missing values, you can do so after upsampling.
+
+        Returns
+        -------
+        self : PupilProcessor
+            Returns self for method chaining.
+
+        Notes
+        -----
+        - There might be slight discrepancies in the actual sampling rate from the target sampling rate because the time step between samples is rounded to the nearest integer. For example, if you supply a target sampling rate of 1001 Hz, the actual sampling rate will be 1000 Hz (round(1000/1001)= 1 ms time step). In the current implementation, this will result in an error because the actual sampling rate 1000 Hz does not match the target sampling rate 1001 Hz.
+        - Upsampled data can be interpolated to fill missing values. You may need to set a lower missing_threshold for interpolation as the upsampling will introduce more missing values.
+        - Updates summary_data with:
+            - run_upsample: Boolean indicating if upsampling was performed
+            - upsampled_bin_size: Size of the upsampled time bin in milliseconds
+            - upsampled_samp_freq: Upsampled sampling frequency in Hz
+        - Updates all_steps to track processing history
+        - Processing parameters are stored in self.params['upsample']
+        """
+
+        # Validate target sampling frequency
+        if target_samp_freq <= self.samp_freq:
+            raise ValueError(f"Target sampling frequency ({target_samp_freq} Hz) must be higher than current frequency ({self.samp_freq} Hz)")
+
+        # store parameters
+        self.params['upsample'] = {k: v for k, v in locals().items() if k != 'self'}
+
+        # calculate new time step in milliseconds
+        new_time_step_ms = round(1000 / target_samp_freq)
         
+        # get data
+        data = self.data
+        time_col = self.time_col
+
+        # initialize summary data
+        self.summary_data['run_upsample'] = False
+
+        # group data
+        grouped = self.data.groupby(self.trial_identifier, sort=False)
+
+        # iterate over trials and upsample data
+        skip_trials = []
+        all_upsampled = []
+        
+        for group, groupdata in tqdm(grouped, desc='Upsampling', disable=not self.progress_bar):
+            try:
+                # get original time range
+                min_time = int(groupdata[time_col].min())
+                max_time = int(groupdata[time_col].max())
+                
+                # create complete time series from min_time to max_time 
+                complete_time_ms = np.arange(min_time, max_time + new_time_step_ms, new_time_step_ms)
+                
+                # create new dataframe with complete time series
+                new_data = pd.DataFrame({time_col: complete_time_ms})
+
+                # add trial identifier columns
+                for i, col in enumerate(self.trial_identifier):
+                    if isinstance(group, tuple):
+                        new_data[col] = group[i]  # Use integer index for tuple
+                    else:
+                        new_data[col] = group  # Single column case
+                
+                # merge with original data to get existing values
+                # use outer merge to keep all time points
+                merged = pd.merge(new_data, groupdata, on=[time_col] + self.trial_identifier, how='left')
+                
+                # determine which row is upsampled
+                merged['upsampled'] = True
+                merged.loc[merged[time_col].isin(groupdata[time_col]), 'upsampled'] = False
+
+                # determine which columns to preserve vs fill
+                if fill_pupil:
+                    preserve_cols = self.all_pupil_cols + [self.x_col, self.y_col]  # pupil + gaze columns
+                else:
+                    preserve_cols = [self.x_col, self.y_col]  # only gaze columns
+                    
+                fill_cols = [col for col in merged.columns if col not in preserve_cols and col not in [time_col] + self.trial_identifier]
+                
+                # fill missing values for non-preserved columns
+                merged[fill_cols] = merged[fill_cols].ffill()
+                
+                # optionally fill pupil columns if requested
+                if fill_pupil:
+                    pupil_fill_cols = [col for col in self.all_pupil_cols if col in merged.columns]
+                    merged[pupil_fill_cols] = merged[pupil_fill_cols].ffill()
+                
+                # update summary data
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_upsample'] = True
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'upsampled_bin_size'] = new_time_step_ms
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'upsampled_samp_freq'] = target_samp_freq
+                
+                # append upsampled data
+                all_upsampled.append(merged)
+                
+            except Exception as e:
+                skip_trials.append(group)
+                print(f"Failed to upsample trial {group}: {str(e)}")
+
+        # concatenate upsampled data
+        if all_upsampled:
+            data = pd.concat(all_upsampled, ignore_index=True)
+            
+            # check sampling frequency, update samp_freq if pass
+            check_pass = self.check_sampling_frequency(sampling_rate=target_samp_freq, data=data)
+            if check_pass:
+                self.samp_freq = target_samp_freq
+
+                # update data
+                self.data = data
+                
+                # print summary
+                print(f"✓ Upsampling completed!")
+                print(f"  → New sampling frequency: {target_samp_freq} Hz")
+                print(f"  → {len(skip_trials)} trial(s) failed.")
+
+                # print failed trials
+                if len(skip_trials) > 0:
+                    print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
+
+                # update latest step
+                self.all_steps.append('Upsampled')
+        else:
+            raise ValueError("No trials were successfully upsampled!")
+
+        return self
 
     def baseline_correction(self, baseline_query, baseline_range=[None, None], suffix='_bc', method='subtractive'):
         """
@@ -912,9 +1175,14 @@ class PupilProcessor:
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_baseline_correction'] = True
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'baseline'] = baseline
 
-        # print trials not baseline corrected
+        # print summary
+        print(f"✓ Baseline correction completed!")
+        print(f"  → New column: '{new_col}' (baseline corrected)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(skip_trials)} trial(s) failed.")
+
+        # print failed trials
         if len(skip_trials) > 0:
-            print(f"\n {len(skip_trials)} trials not baseline corrected due to missing data:")
             print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
 
         # update latest step and latest pupil column
@@ -1004,11 +1272,6 @@ class PupilProcessor:
                 df_summary.loc[group_indices, 'baseline_upper'] = upper
                 df_summary.loc[group_indices, 'baseline_lower'] = lower
 
-        # print summary
-        print(f"\n {df_summary['baseline_outlier'].sum()} trials detected as baseline outliers:")
-        if df_summary['baseline_outlier'].any():
-            print(f"\n {df_summary.query('baseline_outlier==True')[self.trial_identifier]}")
-
         # update summary data
         self.summary_data = df_summary
 
@@ -1018,6 +1281,14 @@ class PupilProcessor:
         # update steps
         self.all_steps.append('Baseline Outlier Detection')
         
+        # print summary
+        print(f"✓ Baseline outlier detection completed!")
+        print(f"  → {df_summary['baseline_outlier'].sum()} trial(s) detected as baseline outliers.")
+
+        # print outlier trials
+        if df_summary['baseline_outlier'].any():
+            print(f"\n {df_summary.query('baseline_outlier==True')[self.trial_identifier]}")
+
         # plot if requested
         if plot:
             self.plot_baseline(plot_by=outlier_by, return_fig=False, **kwargs)
@@ -1126,18 +1397,20 @@ class PupilProcessor:
                 is_outlier = (max_val > upper_threshold) or (min_val < lower_threshold) 
                 df_summary.loc[trial_mask, 'trace_outlier'] = is_outlier
 
-        # print outlier trials
-        outlier_trials = df_summary.query('trace_outlier==True')[self.trial_identifier]
-        if len(outlier_trials) > 0:
-            print(f"\n {len(outlier_trials)} trials detected as outliers:")
-            print(f"\n {pd.DataFrame(outlier_trials)}")
-
         # update summary data and steps
         self.summary_data = df_summary
         self.all_steps.append('Trace Outlier Detection')
 
         # update outlier by
         self.trace_outlier_by = outlier_by
+
+        # print summary
+        print(f"✓ Trace outlier detection completed!")
+        print(f"  → {df_summary['trace_outlier'].sum()} trial(s) detected as trace outliers.")
+
+        # print outlier trials
+        if df_summary['trace_outlier'].any():
+            print(f"\n {df_summary.query('trace_outlier==True')[self.trial_identifier]}")
 
         # plot if requested
         if plot:
