@@ -16,7 +16,7 @@ build:
       - pip cache purge
       # needed because of testPypi
       #- pip install -r docs/requirements.txt
-      - pip install git+https://github.com/HanZhang-psych/pupeyes.git
+      - pip install pupeyes
       - pip install mne 
       - pip install joblib
       - pip install jupyter-book
