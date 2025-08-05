@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  pupeyes:
+    build: .
+    container_name: pupeyes-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      # Mount the current directory to /app in the container
+      - .:/app
+      # Mount a data directory for user data
+      - ./data:/app/data
+      # Mount Jupyter config for persistence
+      - jupyter_data:/home/jupyter/.jupyter
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=
+      - JUPYTER_PASSWORD=
+    restart: unless-stopped
+    # Allow the container to access display for GUI applications
+    privileged: true
+    # Add necessary capabilities for GUI
+    cap_add:
+      - SYS_ADMIN
+
+volumes:
+  jupyter_data: 

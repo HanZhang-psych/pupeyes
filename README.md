@@ -61,6 +61,24 @@ pip install git+https://github.com/HanZhang-psych/pupeyes.git
 
 Tutorials and API reference are available at [Read the Docs](https://pupeyes.readthedocs.io/).
 
+## Docker Container
+
+Try PupEyes in a virtual environment!
+
+```bash
+# Clone the repository
+git clone https://github.com/HanZhang-psych/pupeyes.git
+cd pupeyes
+
+# Start the Docker container
+./start-pupeyes.sh start
+
+# Access Jupyter Lab at http://localhost:8888
+```
+
+For detailed Docker instructions, see [DOCKER_README.md](DOCKER_README.md).
+
+
 ## Compatibility
 
 While some PupEyes features are specific to Eyelink eye-trackers, many tools are compatible with any eye movement data.
