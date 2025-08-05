@@ -17,6 +17,7 @@ build:
       # needed because of testPypi
       #- pip install -r docs/requirements.txt
       - pip install pupeyes
+      - pip install I2MC
       - pip install mne 
       - pip install joblib
       - pip install jupyter-book
