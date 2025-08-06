@@ -2,26 +2,29 @@
 
 <!--next-version-placeholder-->
 
-## v0.1.0 (03/08/2025)
+## v0.3.6 (8/6/2025)
 
-- First release of `pupeyes`!
+- Enhanced MyBinder integration with improved postBuild script for better package installation
+- Added support for additional packages (mne, joblib, I2MC) in MyBinder environment
+- Updated OpenCV dependency to opencv-python-headless for better compatibility
+- Improved documentation with MyBinder links and executable notebook access
+- Updated repository configuration for consistency (branch name changes)
+- Streamlined MyBinder setup process for faster loading and better user experience
 
-## v0.2.0 (3/22/2025)
+## v0.3.5 (8/5/2025)
+- Switch to headless opencv version for mybinder loading.
 
-- Use strictly True of False for baseline_outlier and trace_ouliter columns in the summary data to avoid pandas ambiguous interpretation of NA in a boolean context.
-- Removed some redundant dependencies and relaxed Python version restrictions to hopefully speed up resolving dependencies during install.
-- Added plot_gaze_surface() to check gaze position.
-- Improved summary stats for filter_position().
-- Updated docs to demonstrate plot_gaze_surface()
+## v0.3.4 (8/5/2025)
+- Loose version constrains for Python.
 
-## v0.2.1 (3/22/2025)
+## v0.3.3 (8/5/2025)
+- Loose version constrains for tables package.
 
-- A better fix for how NA is handled in check_baseline_outliers()
-- Added save option for plot_gaze_surface()
+## v0.3.2 (8/5/2025)
+- Automatically convert dtypes for pupil size data when creating PupilProcessor object.
 
-## v0.2.2 (4/3/2025)
-
-- Added ipywidgets as dependency
+## v0.3.1 (8/5/2025)
+- Minor bug fixes.
 
 ## v0.3.0 (8/5/2025)
 
@@ -37,17 +40,33 @@
 - Removed deprecated read_data notebook and replaced with device-specific notebooks
 - Minor changes to tutorials
 
-## v0.3.1 (8/5/2025)
-- Minor bug fixes.
+## v0.2.2 (4/3/2025)
 
-## v0.3.2 (8/5/2025)
-- Automatically convert dtypes for pupil size data when creating PupilProcessor object.
+- Added ipywidgets as dependency
 
-## v0.3.3 (8/5/2025)
-- Loose version constrains for tables package.
+## v0.2.1 (3/22/2025)
 
-## v0.3.4 (8/5/2025)
-- Loose version constrains for Python.
+- A better fix for how NA is handled in check_baseline_outliers()
+- Added save option for plot_gaze_surface()
 
-## v0.3.5 (8/5/2025)
-- Switch to headless opencv version for mybinder loading.
+## v0.2.0 (3/22/2025)
+
+- Use strictly True of False for baseline_outlier and trace_ouliter columns in the summary data to avoid pandas ambiguous interpretation of NA in a boolean context.
+- Removed some redundant dependencies and relaxed Python version restrictions to hopefully speed up resolving dependencies during install.
+- Added plot_gaze_surface() to check gaze position.
+- Improved summary stats for filter_position().
+- Updated docs to demonstrate plot_gaze_surface()
+
+## v0.1.0 (03/08/2025)
+
+- First release of `pupeyes`!
+
+
+
+
+
+
+
+
+
+
