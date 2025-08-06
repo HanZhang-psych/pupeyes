@@ -39,7 +39,7 @@ latex:
 repository:
   url: https://github.com/HanZhang-psych/pupeyes
   path_to_book: docs  # Optional path to your book, relative to the repository root
-  branch: master  # Which branch of the repository should be used when creating links (optional)
+  branch: main  # Which branch of the repository should be used when creating links (optional)
 
 launch_buttons:
   notebook_interface: "jupyterlab"  # or "classic"
