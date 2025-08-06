@@ -2,22 +2,22 @@
 git+https://github.com/HanZhang-psych/pupeyes.git
 
 # Core dependencies
-pandas>=2.0.0
-numpy>=1.20.0
-scipy>=1.7.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
-opencv-python-headless>=4.12.0.88
-tqdm>=4.60.0
-intervaltree>=3.0.0
-pillow>=8.0.0
-dash>=2.0.0
-dash-bootstrap-components>=1.0.0
-nbformat>=5.0.0
-dill>=0.3.0
-ipywidgets>=7.0.0
-h5py>=3.0.0
-tables>=3.7.0
+pandas
+numpy
+scipy
+matplotlib
+seaborn
+opencv-python-headless
+tqdm
+intervaltree
+pillow
+dash
+dash-bootstrap-components
+nbformat
+dill
+ipywidgets
+h5py
+tables
 
 # Jupyter and notebook dependencies
 jupyter
