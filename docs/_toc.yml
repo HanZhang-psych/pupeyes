@@ -13,4 +13,5 @@ chapters:
     sections:
       - file: read_data_tobii_titta
       - file: read_data_tobii_prolab
+  - file: hershman
   - file: api
