@@ -7,7 +7,7 @@ numpy
 scipy
 matplotlib
 seaborn
-opencv-python-headless
+opencv_contrib_python
 tqdm
 intervaltree
 pillow
