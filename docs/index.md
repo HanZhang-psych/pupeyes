@@ -18,6 +18,8 @@ pip install git+https://github.com/HanZhang-psych/pupeyes.git
 
 [Try PupEyes in MyBinder!](https://mybinder.org/v2/gh/HanZhang-psych/pupeyes/HEAD?urlpath=%2Fdoc%2Ftree%2Fdocs%2F)
 
+You can also click the rocket button on the top bar of a page and launch an executable notebook for that specific page.
+
 ## Higlights
 
 ### Best practices 
