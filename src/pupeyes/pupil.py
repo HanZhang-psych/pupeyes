@@ -126,21 +126,31 @@ class PupilProcessor:
             Value for missing pupil size for the eye tracker. Different eye trackers use different values to indicate missing values. PupEyes will replace these values with 0.
             Other possible values are pd.NA, np.nan, -1, -999, etc.
         """
-        # device
+        #### device ####
         self.device = device
         print(f'Device: {self.device}')
-        # make a copy of the data
-        self.data = data.copy() 
+
+        #### data ####
+        # x gaze position
+        self.x_col = x_col 
+        # y gaze position
+        self.y_col = y_col
+        # time column
+        self.time_col = time_col 
+        # pupil column
+        self.pupil_col = pupil_col 
+        # trial identifier
         # group by column for preprocessing
         if isinstance(trial_identifier, str):
             self.trial_identifier = [trial_identifier]
         else:
             self.trial_identifier = trial_identifier
-        # missing value for the eye tracker
-        self.eyetracker_missing_value = eyetracker_missing_value
-        # column name for pupil size
-        self.pupil_col = pupil_col 
 
+        # make a copy of the data
+        self.data = data.copy().convert_dtypes()
+
+        #### handle missing values ####
+        self.eyetracker_missing_value = eyetracker_missing_value
         # replace eye-tracker specified missing values with 0
         # check if the missing value exists in the data
         if pd.isna(self.eyetracker_missing_value):
@@ -158,9 +168,6 @@ class PupilProcessor:
                     print(f'Eye-tracker missing value is {self.eyetracker_missing_value}. Replacing with 0.')
                     self.data[self.pupil_col] = self.data[self.pupil_col].replace({self.eyetracker_missing_value: 0})
 
-        # column name for time
-        self.time_col = time_col 
-        
         # check for non-integer timestamps and warn
         time_values = self.data[time_col].dropna()
         if not all(isinstance(val, (int, np.integer)) for val in time_values):
@@ -172,12 +179,25 @@ class PupilProcessor:
                 UserWarning
             )
         
-        # column name for x gaze position
-        self.x_col = x_col 
-        # column name for y gaze position
-        self.y_col = y_col 
+        #### check sampling frequency ####
         # sampling frequency
         self.samp_freq = samp_freq
+        # check sampling frequency
+        self.check_sampling_frequency()
+
+        #### convert pupil size ####
+        if convert_pupil_size:
+            self.recording_unit = recording_unit
+            self.artificial_d = artificial_d
+            self.artificial_size = artificial_size
+            self.data[self.pupil_col] = convert_pupil(self.data[self.pupil_col], artificial_d=artificial_d, artificial_size=artificial_size, recording_unit=recording_unit)
+            print(f'Pupil data converted to {recording_unit} with artificial d={artificial_d} and artificial size={artificial_size}')
+        else:
+            self.recording_unit = None
+            self.artificial_d = None
+            self.artificial_size = None
+
+        #### other stuff ####
         # store all preprocessing steps
         self.all_steps = [] 
         # store generated pupil columns
@@ -193,20 +213,6 @@ class PupilProcessor:
         self.trace_outlier_by = None
         # progress bar
         self.progress_bar = progress_bar
-        # check sampling frequency
-        self.check_sampling_frequency()
-
-        # convert pupil size
-        if convert_pupil_size:
-            self.recording_unit = recording_unit
-            self.artificial_d = artificial_d
-            self.artificial_size = artificial_size
-            self.data[self.pupil_col] = convert_pupil(self.data[self.pupil_col], artificial_d=artificial_d, artificial_size=artificial_size, recording_unit=recording_unit)
-            print(f'Pupil data converted to {recording_unit} with artificial d={artificial_d} and artificial size={artificial_size}')
-        else:
-            self.recording_unit = None
-            self.artificial_d = None
-            self.artificial_size = None
 
         print(f'PupilProcessor initialized with {len(self.data)} samples')
         print(f'Pupil column: {self.pupil_col}, Time column: {self.time_col}, X column: {self.x_col}, Y column: {self.y_col}')
