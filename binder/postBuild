@@ -4,12 +4,16 @@
 mkdir -p docs/data
 cp -r docs/data/* docs/data/ 2>/dev/null || true
 
-# Install pupeyes package using setup.py
-pip install -e .
+# # Install pupeyes package using setup.py
+# pip install -e .
 
-# Set up Jupyter kernel
-python -m ipykernel install --user --name pupeyes --display-name "PupEyes"
+# # Set up Jupyter kernel
+# python -m ipykernel install --user --name pupeyes --display-name "PupEyes"
 
-echo "PupEyes environment setup complete!" 
+# echo "PupEyes environment setup complete!" 
+
+# install I2MC
+pip install I2MC
+
 
 jupyter lab build --minimize=False

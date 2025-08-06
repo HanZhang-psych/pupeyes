@@ -9,9 +9,13 @@
 
 [![PupEyes](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/banner.jpg)](https://pupeyes.readthedocs.io/)
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HanZhang-psych/pupeyes/HEAD?urlpath=%2Fdoc%2Ftree%2Fdocs%2F)
+
 ## Overview
 
 PupEyes is a Python package for preprocessing and visualizing eye movement data. It handles pupil size preprocessing and supports interactive visualization of pupil size and fixation data. It was designed to streamline data preparation so you can analyze your data with ease and confidence.
+
+[Try PupEyes in MyBinder!](https://mybinder.org/v2/gh/HanZhang-psych/pupeyes/HEAD?urlpath=%2Fdoc%2Ftree%2Fdocs%2F)
 
 [Tutorials and API Reference](https://pupeyes.readthedocs.io/)
 
@@ -57,27 +61,10 @@ or install the latest development version from Github
 ```bash
 pip install git+https://github.com/HanZhang-psych/pupeyes.git
 ```
+
 ## Documentation
 
 Tutorials and API reference are available at [Read the Docs](https://pupeyes.readthedocs.io/).
-
-## Docker Container
-
-Try PupEyes in a virtual environment!
-
-```bash
-# Clone the repository
-git clone https://github.com/HanZhang-psych/pupeyes.git
-cd pupeyes
-
-# Start the Docker container
-./start-pupeyes.sh start
-
-# Access Jupyter Lab at http://localhost:8888
-```
-
-For detailed Docker instructions, see [DOCKER_README.md](DOCKER_README.md).
-
 
 ## Compatibility
 

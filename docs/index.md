@@ -14,6 +14,10 @@ or install the latest development version from Github
 pip install git+https://github.com/HanZhang-psych/pupeyes.git
 ```
 
+## Executable Notebooks
+
+[Try PupEyes in MyBinder!](https://mybinder.org/v2/gh/HanZhang-psych/pupeyes/HEAD?urlpath=%2Fdoc%2Ftree%2Fdocs%2F)
+
 ## Higlights
 
 ### Best practices 
