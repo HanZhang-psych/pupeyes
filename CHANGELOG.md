@@ -48,3 +48,6 @@
 
 ## v0.3.4 (8/5/2025)
 - Loose version constrains for Python.
+
+## v0.3.5 (8/5/2025)
+- Switch to headless opencv version for mybinder loading.
