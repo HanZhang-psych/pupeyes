@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "pupeyes"
-version = "0.3.3"
+version = "0.3.4"
 description = "PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis"
 authors = ["Han Zhang"]
 license = "GNU General Public License v3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4.0"
+python = ">=3.10.16,<4.0"
 pandas = "^2.2.3"
 tqdm = "^4.67.1"
 intervaltree = "^3.1.0"
