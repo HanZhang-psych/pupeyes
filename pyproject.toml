@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pupeyes"
-version = "0.3.2"
+version = "0.3.3"
 description = "PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis"
 authors = ["Han Zhang"]
 license = "GNU General Public License v3.0"
@@ -21,7 +21,7 @@ nbformat = "^5.10.4"
 dill = "^0.3.9"
 ipywidgets = "^8.1.5"
 h5py = "^3.14.0"
-tables = "^3.10.2"
+tables = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

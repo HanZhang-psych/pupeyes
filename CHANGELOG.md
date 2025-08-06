@@ -42,3 +42,6 @@
 
 ## v0.3.2 (8/5/2025)
 - Automatically convert dtypes for pupil size data when creating PupilProcessor object.
+
+## v0.3.3 (8/5/2025)
+- Loose version constrains for tables package.
