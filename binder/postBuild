@@ -11,3 +11,5 @@ pip install -e .
 python -m ipykernel install --user --name pupeyes --display-name "PupEyes"
 
 echo "PupEyes environment setup complete!" 
+
+jupyter lab build --minimize=False
