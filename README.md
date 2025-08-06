@@ -1,6 +1,6 @@
 # PupEyes: Your Buddy for Pupil Size and Eye Movement Data Analysis
 
-[![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
+[![Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](https://pupeyes.readthedocs.io/en/latest/index.html)
 [![GitHub issues](https://img.shields.io/github/issues/HanZhang-psych/pupeyes)](https://github.com/HanZhang-psych/pupeyes/issues)
