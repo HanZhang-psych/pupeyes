@@ -1,6 +1,9 @@
 # Changelog
 
 <!--next-version-placeholder-->
+## v0.3.7 (8/7/2025)
+- Fixed missing docstring in PupilProcessor
+- Fixed Dash app titles to be consistent with object name.
 
 ## v0.3.6 (8/6/2025)
 
