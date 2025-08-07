@@ -88,7 +88,7 @@ class PupilViewer:
         column_options = [{'label': col, 'value': col} for col in self.pupil_processor.all_pupil_cols]
             
         return dbc.Container([
-            html.H1("Pupil Preprocessing Explorer", className="text-center my-4"),
+            html.H1("Pupil Viewer", className="text-center my-4"),
             
             dbc.Row([
                 # Trial Selection

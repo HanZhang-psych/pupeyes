@@ -62,9 +62,12 @@ class PupilProcessor:
         Unit of the recorded pupil size
     device : {'eyelink', 'tobii_titta', 'tobii_prolab','smi'}, default='eyelink'
         Device type. At the moment, this only controls whether sampling frequency is checked.
+    eyetracker_missing_value : int, default=0
+        Value for missing pupil size for the eye tracker. Different eye trackers use different values to indicate missing values. PupEyes will replace these values with 0.
+        Other possible values are pd.NA, np.nan, -1, -999, etc.
     progress_bar : bool, default=True
         Whether to show a progress bar for preprocessing steps
-    
+
     Attributes
     ----------
     data : pd.DataFrame
@@ -90,41 +93,9 @@ class PupilProcessor:
     - artificial_size was measured for the setup of our research group and may not generalize to other setups.
     """
 
-    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter', progress_bar=True, device='eyelink', eyetracker_missing_value=0):
+    def __init__(self, data, trial_identifier, pupil_col, time_col, x_col, y_col, samp_freq, convert_pupil_size=False, artificial_d=5, artificial_size=5663, recording_unit='diameter', device='eyelink', eyetracker_missing_value=0, progress_bar=True):
         """
-        Initialize PupilData object.
-
-        Parameters
-        ----------
-        data : pandas.DataFrame
-            DataFrame containing pupil size data
-        trial_identifier : str or list
-            Column name(s) for trial identifier
-        pupil_col : str
-            Column name for pupil size
-        time_col : str
-            Column name for time. Must be in milliseconds and integer.
-        x_col : str
-            Column name for x gaze position
-        y_col : str
-            Column name for y gaze position
-        samp_freq : int
-            Sampling frequency in Hz
-        convert_pupil_size : bool, default=False
-            Whether to convert pupil size from area to diameter or vice versa
-        artificial_d : float, default=5
-            Artificial pupil diameter in mm, used for pupil size conversion
-        artificial_size : float, default=5663
-            Artificial pupil size in arbitrary units, used for pupil size conversion
-        recording_unit : {'diameter', 'area'}, default='diameter'
-            Unit of the recorded pupil size
-        progress_bar : bool, default=True
-            Whether to show a progress bar for preprocessing steps
-        device : {'eyelink', 'tobii_titta', 'tobii_prolab','smi'}, default='eyelink'
-            Device type. At the moment, this only controls whether sampling frequency is checked.
-        eyetracker_missing_value : int, default=0
-            Value for missing pupil size for the eye tracker. Different eye trackers use different values to indicate missing values. PupEyes will replace these values with 0.
-            Other possible values are pd.NA, np.nan, -1, -999, etc.
+        Initialize PupilProcessor object.
         """
         #### device ####
         self.device = device

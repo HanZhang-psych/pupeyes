@@ -135,7 +135,7 @@ class AOIDrawer:
         return dbc.Container([
             dbc.Row([
                 dbc.Col([
-                    html.H1("AOI Drawing Tool", className="text-center mb-2"),
+                    html.H1("AOI Drawer", className="text-center mb-2"),
                     html.H6(f"Stimulus: {self.stimuli_name}", className="text-center text-muted mb-2")
                 ])
             ]),

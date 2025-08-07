@@ -390,7 +390,7 @@ class FixationViewer:
         return dbc.Container([
             dbc.Row([
                 dbc.Col([
-                    html.H1("Eye Movement Visualizer", className="text-center mb-4")
+                    html.H1("Fixation Viewer", className="text-center mb-4")
                 ])
             ]),
             
