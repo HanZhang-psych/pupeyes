@@ -80,15 +80,21 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 If you use PupEyes in your research, please cite our [preprint](https://osf.io/preprints/psyarxiv/h95ma_v1) 
 
 ```bibtex
-@misc{zhang_pupeyes_2025,
-	title = {{PupEyes}: An Interactive Python Library for Pupil Size and Eye Movement Data Processing},
-	url = {https://osf.io/h95ma_v1},
-	doi = {10.31234/osf.io/h95ma_v1},
+@article{zhang_pupeyes_2026,
+	title = {{PupEyes}: {An} interactive {Python} library for eye movement data processing},
+	volume = {58},
+	issn = {1554-3528},
 	shorttitle = {{PupEyes}},
-	publisher = {{OSF}},
+	url = {https://doi.org/10.3758/s13428-025-02830-z},
+	doi = {10.3758/s13428-025-02830-z},
+	number = {1},
+	urldate = {2026-01-05},
+	journal = {Behavior Research Methods},
 	author = {Zhang, Han and Jonides, John},
-	urldate = {2025-04-16},
-	date = {2025-04-07}
+	month = jan,
+	year = {2026},
+	keywords = {Data analysis, Eye-tracking, Fixation, Pupillometry, Python},
+	pages = {29},
 }
 ```
 
