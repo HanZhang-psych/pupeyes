@@ -16,7 +16,7 @@ PupEyes is a Python package for preprocessing and visualizing eye movement data.
 
 [Tutorials and API Reference](https://pupeyes.readthedocs.io/)
 
-[Preprint](https://osf.io/preprints/psyarxiv/h95ma_v1) 
+[Paper](https://link.springer.com/article/10.3758/s13428-025-02830-z) 
 
 ## Higlights
 
