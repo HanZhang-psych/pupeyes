@@ -77,7 +77,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Citation
 
-If you use PupEyes in your research, please cite our [preprint](https://osf.io/preprints/psyarxiv/h95ma_v1) 
+If you use PupEyes in your research, please cite our [paper](https://link.springer.com/article/10.3758/s13428-025-02830-z) 
 
 ```bibtex
 @article{zhang_pupeyes_2026,
