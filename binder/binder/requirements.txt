@@ -1,0 +1,6 @@
+pupeyes
+pandas
+numpy
+plotly
+dash
+ipywidgets
