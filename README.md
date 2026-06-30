@@ -3,7 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
 [![GitHub issues](https://img.shields.io/github/issues/HanZhang-psych/pupeyes)](https://github.com/HanZhang-psych/pupeyes/issues)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/pupeyes)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/pupeyes?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pupeyes)
 [![ReadtheDocs](https://readthedocs.org/projects/pupeyes/badge/?version=latest)](https://pupeyes.readthedocs.io/en/latest/index.html)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HanZhang-psych/pupeyes/HEAD?urlpath=%2Fdoc%2Ftree%2Fdocs%2F)
 [![PupEyes](https://raw.githubusercontent.com/HanZhang-psych/pupeyes/refs/heads/main/banner.jpg)](https://pupeyes.readthedocs.io/)
