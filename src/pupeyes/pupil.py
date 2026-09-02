@@ -225,7 +225,18 @@ class PupilProcessor:
                 print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
                 check_pass = True
         else:
-            raise ValueError('Sampling frequency is not consistent!')
+            delta_t = 1000/sampling_rate
+            abs_deviation = np.abs(diff - delta_t)
+            
+            # Deviations up to 1ms are possible if 1000 is not divisble by the sampling frequency.
+            # For instance 1000/120 = 8.33. Diff will be [8,9]
+            consistent = bool(np.all(abs_deviation < 1))
+
+            if not consistent:
+                raise ValueError('Sampling frequency is not consistent!')
+            else:
+                print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
+                check_pass = True
         
         return check_pass
 
