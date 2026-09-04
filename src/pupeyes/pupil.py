@@ -215,30 +215,31 @@ class PupilProcessor:
         
         data = self.data if data is None else data
         sampling_rate = self.samp_freq if sampling_rate is None else sampling_rate
-        check_pass = False
-        # check if the difference between consecutive samples is equal to a fixed value
-        diff = data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
-        if len(diff) == 1:
-            if 1000/diff[0] != sampling_rate:
-                raise ValueError(f'Actual sampling frequency {1000/diff[0]}Hz does not match the provided sampling frequency {sampling_rate}Hz!')
-            else:
-                print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
-                check_pass = True
-        else:
-            delta_t = 1000/sampling_rate
-            abs_deviation = np.abs(diff - delta_t)
-            
-            # Deviations up to 1ms are possible if 1000 is not divisble by the sampling frequency.
-            # For instance 1000/120 = 8.33. Diff will be [8,9]
-            consistent = bool(np.all(abs_deviation < 1))
+        delta_t = 1000/sampling_rate
 
-            if not consistent:
-                raise ValueError('Sampling frequency is not consistent!')
-            else:
-                print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
-                check_pass = True
-        
-        return check_pass
+        # Timestamps are rounded to integer milliseconds, so when 1000 is not divisible
+        # by the sampling frequency each interval may deviate from the true interval by
+        # up to 1ms. For instance 1000/120 = 8.33, so diffs alternate between 8 and 9.
+        diff = data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
+        if not np.all(np.abs(diff - delta_t) < 1):
+            if len(diff) == 1:
+                raise ValueError(f'Actual sampling frequency {1000/diff[0]}Hz does not match the provided sampling frequency {sampling_rate}Hz!')
+            raise ValueError('Sampling frequency is not consistent!')
+
+        # The per-interval tolerance alone would accept a mixture of two different
+        # uniform rates (e.g. one trial all 8ms and another all 9ms, both within 1ms
+        # of 8.33). Rounding shifts a trial's first and last timestamps by at most
+        # 0.5ms each, so each trial's mean interval must lie within 1/n of delta_t.
+        stats = data.groupby(self.trial_identifier, sort=False)[self.time_col].agg(['count', 'first', 'last'])
+        stats = stats[stats['count'] > 1]
+        n_intervals = stats['count'] - 1
+        mean_deviation = np.abs((stats['last'] - stats['first']) / n_intervals - delta_t)
+        bad_trials = mean_deviation > 1/n_intervals + 1e-9
+        if bad_trials.any():
+            raise ValueError(f'Sampling frequency is not consistent: mean sampling interval deviates from the expected {delta_t:.2f}ms in trial(s) {list(stats.index[bad_trials])}!')
+
+        print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
+        return True
 
     def deblink(self, suffix='_db'):
         """
