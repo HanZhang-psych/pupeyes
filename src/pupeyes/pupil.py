@@ -170,9 +170,12 @@ class PupilProcessor:
 
         #### other stuff ####
         # store all preprocessing steps
-        self.all_steps = [] 
+        self.all_steps = []
         # store generated pupil columns
         self.all_pupil_cols = [pupil_col]
+        # whether each entry in all_pupil_cols was successfully produced for at least
+        # one trial. The raw input column is trivially successful.
+        self.step_success = [True]
         # store parameters for each step
         self.params = dict()
         # trials
@@ -188,6 +191,29 @@ class PupilProcessor:
         print(f'PupilProcessor initialized with {len(self.data)} samples')
         print(f'Pupil column: {self.pupil_col}, Time column: {self.time_col}, X column: {self.x_col}, Y column: {self.y_col}')
         print(f'Trial identifier: {self.trial_identifier}, Number of trials: {len(self.trials)}')
+
+    def _get_pupil_col(self):
+        """
+        Return the most recently successfully processed pupil column.
+
+        Walks self.all_pupil_cols backwards together with self.step_success and
+        returns the first column whose step succeeded for at least one trial.
+        This protects downstream steps (and plotting/diagnostics) from a
+        processing step that failed for every trial (e.g. an interpolation or
+        baseline correction with an unusable baseline period for all trials),
+        which would otherwise leave all_pupil_cols[-1] pointing at a column
+        that was never written to self.data.
+
+        Returns
+        -------
+        str
+            Name of the last usable pupil column. Falls back to the original
+            raw pupil column if every processing step failed.
+        """
+        for col, success in zip(reversed(self.all_pupil_cols), reversed(self.step_success)):
+            if success:
+                return col
+        return self.all_pupil_cols[0]
 
     def check_sampling_frequency(self, sampling_rate=None, data=None):
         """
@@ -215,31 +241,30 @@ class PupilProcessor:
         
         data = self.data if data is None else data
         sampling_rate = self.samp_freq if sampling_rate is None else sampling_rate
-        delta_t = 1000/sampling_rate
-
-        # Timestamps are rounded to integer milliseconds, so when 1000 is not divisible
-        # by the sampling frequency each interval may deviate from the true interval by
-        # up to 1ms. For instance 1000/120 = 8.33, so diffs alternate between 8 and 9.
+        check_pass = False
+        # check if the difference between consecutive samples is equal to a fixed value
         diff = data.groupby(self.trial_identifier, sort=False)[self.time_col].diff().dropna().unique()
-        if not np.all(np.abs(diff - delta_t) < 1):
-            if len(diff) == 1:
+        if len(diff) == 1:
+            if 1000/diff[0] != sampling_rate:
                 raise ValueError(f'Actual sampling frequency {1000/diff[0]}Hz does not match the provided sampling frequency {sampling_rate}Hz!')
-            raise ValueError('Sampling frequency is not consistent!')
+            else:
+                print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
+                check_pass = True
+        else:
+            delta_t = 1000/sampling_rate
+            abs_deviation = np.abs(diff - delta_t)
+            
+            # Deviations up to 1ms are possible if 1000 is not divisble by the sampling frequency.
+            # For instance 1000/120 = 8.33. Diff will be [8,9]
+            consistent = bool(np.all(abs_deviation < 1))
 
-        # The per-interval tolerance alone would accept a mixture of two different
-        # uniform rates (e.g. one trial all 8ms and another all 9ms, both within 1ms
-        # of 8.33). Rounding shifts a trial's first and last timestamps by at most
-        # 0.5ms each, so each trial's mean interval must lie within 1/n of delta_t.
-        stats = data.groupby(self.trial_identifier, sort=False)[self.time_col].agg(['count', 'first', 'last'])
-        stats = stats[stats['count'] > 1]
-        n_intervals = stats['count'] - 1
-        mean_deviation = np.abs((stats['last'] - stats['first']) / n_intervals - delta_t)
-        bad_trials = mean_deviation > 1/n_intervals + 1e-9
-        if bad_trials.any():
-            raise ValueError(f'Sampling frequency is not consistent: mean sampling interval deviates from the expected {delta_t:.2f}ms in trial(s) {list(stats.index[bad_trials])}!')
-
-        print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
-        return True
+            if not consistent:
+                raise ValueError('Sampling frequency is not consistent!')
+            else:
+                print(f'Sampling frequency check passed. Sampling rate: {sampling_rate}Hz')
+                check_pass = True
+        
+        return check_pass
 
     def deblink(self, suffix='_db'):
         """
@@ -280,7 +305,7 @@ class PupilProcessor:
         self.params['deblink'] = {k:v for k,v in locals().items() if k != 'self'}
 
         # create new column for deblinked data
-        pupil_col = self.all_pupil_cols[-1]
+        pupil_col = self._get_pupil_col()
         new_col = pupil_col + suffix
         self.data[new_col] = self.data[pupil_col] # default to last pupil column
 
@@ -316,9 +341,13 @@ class PupilProcessor:
         # replace potential other 0 values with NaN
         self.data[new_col] = self.data[new_col].replace({0:pd.NA})
 
-        # update latest pupil column 
+        # update latest pupil column
+        step_success = len(empty_trials) < grouped.ngroups
         self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
         self.all_steps.append('Deblinked')
+        if not step_success:
+            print(f"⚠ Deblinking failed for every trial. Subsequent steps will fall back to '{pupil_col}'.")
 
         # print summary
         print(f"✓ Deblinking completed!")
@@ -383,7 +412,7 @@ class PupilProcessor:
 
         # create new column for artifact rejected data
         time_col = self.time_col
-        pupil_col = self.all_pupil_cols[-1]
+        pupil_col = self._get_pupil_col()
         new_col = pupil_col + suffix
         self.data[new_col] = self.data[pupil_col] # default to last pupil column
         
@@ -436,12 +465,118 @@ class PupilProcessor:
                     self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'pct_size'] = pct_size_artifacts
 
         # update latest pupil column
+        step_success = len(empty_trials) < grouped.ngroups
         self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
         self.all_steps.append('Artifact Rejected')
+        if not step_success:
+            print(f"⚠ Artifact rejection failed for every trial. Subsequent steps will fall back to '{pupil_col}'.")
 
         # print summary
         print(f"✓ Artifact rejection completed!")
         print(f"  → New column: '{new_col}' (artifacts removed)")
+        print(f"  → Previous column '{pupil_col}' preserved.")
+        print(f"  → {len(empty_trials)} trial(s) failed.")
+
+        # print empty trials
+        if len(empty_trials) > 0:
+            # print a list of trials with high missing values
+            print(f"\n {pd.DataFrame(empty_trials, columns=self.trial_identifier)}")
+
+        return self
+
+    def remove_short_segments(self, suffix='_rs', min_valid_length=0.1):
+        """
+        Remove short, isolated segments of valid pupil data.
+
+        Identifies runs of consecutive non-missing samples (e.g. brief valid stretches
+        sandwiched between blinks or artifacts) and sets any run shorter than
+        min_valid_length to missing (NaN). Such short segments are often unreliable and
+        can introduce spurious spikes when later interpolated over. This step is typically
+        run after deblink/artifact_rejection and before interpolate.
+
+        Parameters
+        ----------
+        suffix : str, default='_rs'
+            Suffix to append to the pupil column name for the new column.
+            For example, if pupil column is 'pupil', the new column will be 'pupil_rs'.
+        min_valid_length : float, default=0.1
+            Minimum length, in seconds, of a consecutive run of valid (non-missing)
+            samples to be kept. Runs shorter than this are set to NaN.
+
+        Returns
+        -------
+        self : PupilProcessor
+            Returns self for method chaining.
+
+        Notes
+        -----
+        - Updates summary_data with:
+            - run_remove_short_segments: Boolean indicating if the step was performed
+            - pct_removed_short_segments: Proportion of previously valid samples that were removed
+        - Creates a new column with suffix appended to the current pupil column name
+        - Updates all_pupil_cols and all_steps to track processing history
+        - Trials with all missing pupil data are skipped and reported
+        - Processing parameters are stored in self.params['remove_short_segments']
+
+        Raises
+        ------
+        ValueError
+            If min_valid_length is not a positive number
+        """
+        if min_valid_length is None or min_valid_length <= 0:
+            raise ValueError("min_valid_length must be a positive number of seconds")
+
+        # store parameters
+        self.params['remove_short_segments'] = {k:v for k,v in locals().items() if k != 'self'}
+
+        # minimum valid run length in samples
+        min_valid_samples = min_valid_length * self.samp_freq
+
+        # create new column for the cleaned data
+        pupil_col = self._get_pupil_col()
+        new_col = pupil_col + suffix
+        self.data[new_col] = self.data[pupil_col] # default to last pupil column
+
+        # initialize summary data
+        self.summary_data['run_remove_short_segments'] = False
+        self.summary_data['pct_removed_short_segments'] = pd.NA
+
+        # iterate over trials if trial_identifier is provided
+        empty_trials = []
+        grouped = self.data.groupby(self.trial_identifier, sort=False)
+        for group, groupdata in tqdm(grouped, desc=f'Removing short segments', disable=not self.progress_bar):
+
+            # check if groupdata has any pupil data
+            if np.all(groupdata[pupil_col].isna()):
+                empty_trials.append(group)
+            else:
+                # identify runs of consecutive valid (non-missing) samples
+                is_valid = groupdata[pupil_col].notna()
+                run_ids = (is_valid != is_valid.shift()).cumsum()
+                run_sizes = is_valid.groupby(run_ids).transform('size')
+                # valid runs shorter than min_valid_samples are removed
+                short_valid_mask = is_valid & (run_sizes < min_valid_samples)
+
+                self.data.loc[groupdata.index[short_valid_mask], new_col] = pd.NA
+
+                # update summary data
+                n_valid = is_valid.sum()
+                pct_removed = short_valid_mask.sum() / n_valid if n_valid > 0 else 0.0
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_remove_short_segments'] = True
+                self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'pct_removed_short_segments'] = pct_removed
+
+        # update latest pupil column
+        step_success = len(empty_trials) < grouped.ngroups
+        self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
+        self.all_steps.append('Removed Short Segments')
+        if not step_success:
+            print(f"⚠ Short segment removal failed for every trial. Subsequent steps will fall back to '{pupil_col}'.")
+
+        # print summary
+        print(f"✓ Short segment removal completed!")
+        print(f"  → New column: '{new_col}' (short valid segments removed)")
         print(f"  → Previous column '{pupil_col}' preserved.")
         print(f"  → {len(empty_trials)} trial(s) failed.")
 
@@ -505,7 +640,7 @@ class PupilProcessor:
         # create new column for filtered gaze position data
         x_col = self.x_col
         y_col = self.y_col
-        pupil_col = self.all_pupil_cols[-1]
+        pupil_col = self._get_pupil_col()
         new_col = pupil_col + suffix
         self.data[new_col] = self.data[pupil_col]
 
@@ -536,8 +671,12 @@ class PupilProcessor:
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'avg_gaze_y'] = np.nanmean(groupdata.loc[groupdata[new_col].notna(), y_col])
         
         # update latest pupil column
+        step_success = len(empty_trials) < grouped.ngroups
         self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
         self.all_steps.append('Gaze Filtered')
+        if not step_success:
+            print(f"⚠ Gaze position filtering failed for every trial. Subsequent steps will fall back to '{pupil_col}'.")
 
         # print summary
         print(f"✓ Gaze spatial filtering completed!")
@@ -599,11 +738,15 @@ class PupilProcessor:
         - Creates a new column with suffix appended to the current pupil column name
         - Updates all_pupil_cols and all_steps to track processing history
         - Missing values (NaN) are preserved
+        - The Butterworth filter is applied separately within each contiguous run of
+          non-missing samples, so a NaN gap (e.g. a blink) does not corrupt the filtered
+          signal on either side of it. A run too short for the filter's padding (fewer
+          than 3 * (order + 1) samples) is left as-is (NaN) and reported.
         """
         # store parameters
         self.params['smooth'] = {k:v for k,v in locals().items() if k != 'self'}
 
-        pupil_col = self.all_pupil_cols[-1]
+        pupil_col = self._get_pupil_col()
         new_col = pupil_col + suffix
 
         if not isinstance(window, int) or window < 3:
@@ -615,12 +758,17 @@ class PupilProcessor:
         if (method in ['rollingmean', 'hann']) and (len(self.data[pupil_col]) < window):
             raise ValueError('Data length smaller than window size')
 
-        if method == 'butter' and ('sampling_freq' not in kwargs or 'cutoff_freq' not in kwargs):
+        if method == 'butter' and ('cutoff_freq' not in kwargs or self.samp_freq is None):
             raise ValueError("For Butterworth filter, 'sampling_freq' and 'cutoff_freq' must be specified")
-        
-        if (method == 'butter') and (self.data[pupil_col].isnull().sum() > 0):
-            raise ValueError("Butterworth filter does not support NaN values")
-        
+
+        # scipy's filtfilt needs more samples than this default padding length,
+        # below which a contiguous valid run cannot be safely filtered
+        butter_order = kwargs.get('order', 3)
+        min_run_len = 3 * (butter_order + 1)
+        # sampling_freq is always sourced from self.samp_freq below; drop any
+        # caller-supplied value so it doesn't collide with that explicit kwarg
+        kwargs.pop('sampling_freq', None)
+
         # create new column for smoothed data
         self.data[new_col] = pd.NA
 
@@ -629,6 +777,7 @@ class PupilProcessor:
 
         # iterate over trials if trial_identifier is provided
         empty_trials = []
+        skipped_short_runs = 0
         grouped = self.data.groupby(self.trial_identifier, sort=False)
         for group, groupdata in tqdm(grouped, desc=f'Smoothing', disable=not self.progress_bar):
 
@@ -641,24 +790,46 @@ class PupilProcessor:
                 elif method == 'hann':
                     smoothed = groupdata[pupil_col].rolling(window=window, win_type='hann', center=True, **kwargs).mean()
                 elif method == 'butter':
-                    smoothed = lowpass_filter(groupdata[pupil_col], sampling_freq=self.sampling_freq, **kwargs)
+                    # filter each contiguous run of non-missing samples separately, so
+                    # NaN gaps (e.g. blinks) don't corrupt the filtered signal around them
+                    values = groupdata[pupil_col]
+                    is_valid = values.notna()
+                    run_ids = (is_valid != is_valid.shift()).cumsum()
+                    smoothed = pd.Series(np.nan, index=values.index, dtype='float64')
+                    for _, run_valid in is_valid.groupby(run_ids):
+                        if not run_valid.iloc[0]:
+                            continue # missing-data run, leave as NaN
+                        run_index = run_valid.index
+                        if len(run_index) <= min_run_len:
+                            skipped_short_runs += 1
+                            continue # too short to filter safely, leave as NaN
+                        smoothed.loc[run_index] = lowpass_filter(values.loc[run_index], sampling_freq=self.samp_freq, **kwargs)
                 self.data.loc[groupdata.index, new_col] = smoothed
 
                 # update summary data
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_smooth'] = True
 
-        # convert to Float64 since some values changed to float64
-        self.data[new_col] = self.data[new_col].convert_dtypes()
+        # convert to Float64 since some values changed to float64. convert_dtypes()
+        # alone is not enough when only some trials succeeded: it cannot infer a
+        # numeric dtype from a column mixing plain Python floats with pd.NA, so it
+        # silently leaves the column as object dtype - astype is the reliable fix.
+        self.data[new_col] = self.data[new_col].astype('Float64')
 
         # update latest pupil column
+        step_success = len(empty_trials) < grouped.ngroups
         self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
         self.all_steps.append('Smoothed')
+        if not step_success:
+            print(f"⚠ Smoothing failed for every trial. Subsequent steps will fall back to '{pupil_col}'.")
 
         # print summary
         print(f"✓ Smoothing completed!")
         print(f"  → New column: '{new_col}' (smoothed)")
         print(f"  → Previous column '{pupil_col}' preserved.")
         print(f"  → {len(empty_trials)} trial(s) failed.")
+        if method == 'butter' and skipped_short_runs > 0:
+            print(f"  → {skipped_short_runs} valid run(s) shorter than {min_run_len} samples were left unfiltered (NaN).")
 
         # print empty trials
         if len(empty_trials) > 0:
@@ -703,7 +874,7 @@ class PupilProcessor:
 
         # use latest pupil column if not specified
         if pupil_col is None:
-            pupil_col = self.all_pupil_cols[-1] 
+            pupil_col = self._get_pupil_col() 
 
         # initialize summary data
         self.summary_data['run_check_missing'] = False
@@ -740,7 +911,7 @@ class PupilProcessor:
         return self
 
 
-    def interpolate(self, suffix='_it', method='linear', missing_threshold=0.6):
+    def interpolate(self, suffix='_it', method='linear', missing_threshold=0.6, max_gap_length=None):
         """
         Interpolate missing values in pupil data.
 
@@ -760,6 +931,13 @@ class PupilProcessor:
         missing_threshold : float, default=0.6
             Maximum proportion of missing values allowed for interpolation.
             Trials with more missing values than this threshold are skipped.
+        max_gap_length : float or None, default=None
+            Maximum length, in seconds, of a single gap of consecutive missing
+            values that will be interpolated. Gaps longer than this are left as
+            missing (NaN) in the new column, following the recommendation in the
+            pupillometry literature to avoid interpolating over long stretches of
+            missing data. If None, gap length is not considered and all gaps in a
+            trial are interpolated (subject only to missing_threshold).
 
         Returns
         -------
@@ -780,17 +958,26 @@ class PupilProcessor:
         ------
         ValueError
             If method is not 'linear' or 'spline'
+            If max_gap_length is not None and not a positive number
         """
         if method not in ['spline', 'linear']:
             raise ValueError("Invalid method. Use 'linear' or 'spline'")
 
+        if max_gap_length is not None and max_gap_length <= 0:
+            raise ValueError("max_gap_length must be a positive number of seconds, or None")
+
         # store parameters
         self.params['interpolate'] = {k:v for k,v in locals().items() if k != 'self'}
 
+        # maximum gap length in samples, used to null out long gaps after interpolation
+        max_gap_samples = None if max_gap_length is None else max_gap_length * self.samp_freq
+
         # create new column for interpolated data
-        pupil_col = self.all_pupil_cols[-1]
+        pupil_col = self._get_pupil_col()
         new_col = pupil_col + suffix
-        
+        # pre-create the column so it exists even if every trial is skipped below
+        self.data[new_col] = pd.NA
+
         # initialize summary data
         self.summary_data['run_interpolate'] = False
         self.summary_data['pct_interpolate'] = 0.0
@@ -812,14 +999,32 @@ class PupilProcessor:
                     interpolated = groupdata[pupil_col].interpolate(method='linear').ffill().bfill()
                 else:
                     interpolated = groupdata[pupil_col].interpolate(method='spline', order=3).ffill().bfill()
+
+                if max_gap_samples is not None:
+                    # identify runs of consecutive missing samples in the original data
+                    is_missing = groupdata[pupil_col].isna()
+                    gap_ids = (is_missing != is_missing.shift()).cumsum()
+                    gap_sizes = is_missing.groupby(gap_ids).transform('size')
+                    # leave gaps longer than max_gap_samples as missing
+                    interpolated[is_missing & (gap_sizes > max_gap_samples)] = np.nan
+
                 # overwrite the new column with interpolated values
                 self.data.loc[groupdata.index, new_col] = interpolated
                 # update summary data
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_interpolate'] = True
-            
+
+        # convert back to a proper numeric dtype: the pd.NA pre-initialization above
+        # leaves the column as object dtype otherwise, which breaks downstream numeric
+        # operations (e.g. smooth's rolling/Butterworth filtering)
+        self.data[new_col] = self.data[new_col].astype('Float64')
+
         # update latest pupil column
+        step_success = len(skip_trials) < grouped.ngroups
         self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
         self.all_steps.append('Interpolated')
+        if not step_success:
+            print(f"⚠ Interpolation failed for every trial. Subsequent steps will fall back to '{pupil_col}'.")
 
         # print summary
         print(f"✓ Interpolation completed!")
@@ -1085,7 +1290,7 @@ class PupilProcessor:
 
         return self
 
-    def baseline_correction(self, baseline_query, baseline_range=[None, None], suffix='_bc', method='subtractive'):
+    def baseline_correction(self, baseline_query=None, baseline_range=[None, None], suffix='_bc', method='subtractive'):
         """
         Apply baseline correction to pupil data.
 
@@ -1094,8 +1299,11 @@ class PupilProcessor:
 
         Parameters
         ----------
-        baseline_query : str
-            Query string to select baseline period data
+        baseline_query : str or None, default=None
+            Query string to select baseline period data. If None, no row
+            filtering is applied and the baseline period for each trial is
+            determined solely by baseline_range (e.g. indices from a custom
+            onset/offset detection method).
         baseline_range : list, default=[None, None]
             Start and end indices for baseline period
         suffix : str, default='_bc'
@@ -1131,11 +1339,13 @@ class PupilProcessor:
         self.summary_data['baseline'] = pd.NA
 
         # which columns to use for baseline correction
-        pupil_col = self.all_pupil_cols[-1]
+        pupil_col = self._get_pupil_col()
         new_col = pupil_col + suffix
+        # pre-create the column so it exists even if every trial is skipped below
+        self.data[new_col] = pd.NA
 
         # get baseline data
-        baseline_data = self.data.query(baseline_query)
+        baseline_data = self.data if baseline_query is None else self.data.query(baseline_query)
 
         # get baseline range    
         s, e = baseline_range
@@ -1164,6 +1374,11 @@ class PupilProcessor:
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'run_baseline_correction'] = True
                 self.summary_data.loc[np.all(self.summary_data[self.trial_identifier] == group, axis=1), 'baseline'] = baseline
 
+        # convert back to a proper numeric dtype: the pd.NA pre-initialization above
+        # leaves the column as object dtype otherwise, which breaks downstream numeric
+        # operations (e.g. smooth's rolling/Butterworth filtering)
+        self.data[new_col] = self.data[new_col].astype('Float64')
+
         # print summary
         print(f"✓ Baseline correction completed!")
         print(f"  → New column: '{new_col}' (baseline corrected)")
@@ -1175,8 +1390,12 @@ class PupilProcessor:
             print(f"\n {pd.DataFrame(skip_trials, columns=self.trial_identifier)}")
 
         # update latest step and latest pupil column
+        step_success = len(skip_trials) < grouped.ngroups
         self.all_steps.append('Baseline Corrected')
         self.all_pupil_cols.append(new_col)
+        self.step_success.append(step_success)
+        if not step_success:
+            print(f"⚠ Baseline correction failed for every trial (invalid baseline period). Subsequent steps will fall back to '{pupil_col}'.")
 
         return self
 
@@ -1330,7 +1549,7 @@ class PupilProcessor:
         if time_col is None:
             time_col = self.time_col
         if pupil_col is None:
-            pupil_col = self.all_pupil_cols[-1]
+            pupil_col = self._get_pupil_col()
         print(f'Checking trace outliers for {pupil_col}')
 
         # initialize outlier columns
@@ -1497,7 +1716,8 @@ class PupilProcessor:
             Being able to specify data is useful for plotting a subset of the data. See examples below.
             If None, uses self.data.
         pupil_col : str, optional
-            Column name for pupil size. Defaults to self.all_pupil_cols[-1].
+            Column name for pupil size. Defaults to the most recently
+            successfully processed pupil column (see _get_pupil_col).
         x_col : str, optional
             Column name for x-coordinates of gaze. Defaults to self.x_col.
         y_col : str, optional
@@ -1546,7 +1766,7 @@ class PupilProcessor:
         if y_col is None:
             y_col = self.y_col
         if pupil_col is None:
-            pupil_col = self.all_pupil_cols[-1]
+            pupil_col = self._get_pupil_col()
 
         # drop nans
         data = data[data[x_col].notna() & data[y_col].notna() & data[pupil_col].notna()].reset_index(drop=True)
@@ -2593,7 +2813,7 @@ class PupilProcessor:
         if time_col is None:
             time_col = self.time_col # default to time column
         if pupil_col is None:
-            pupil_col = self.all_pupil_cols[-1] # default to last pupil column
+            pupil_col = self._get_pupil_col() # default to last pupil column
 
         # get data
         df_plot = self.data.copy()
@@ -2842,7 +3062,7 @@ class PupilProcessor:
 
         # get column
         if pupil_col is None:
-            pupil_col = self.all_pupil_cols[-1]
+            pupil_col = self._get_pupil_col()
 
         # handle condition
         if condition is not None:
